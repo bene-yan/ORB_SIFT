@@ -12,9 +12,10 @@
 #include<opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv/cv.h>
+#include <opencv2/features2d/features2d.hpp>
 
 #include "../include/ORBTest.h"
-#include "../include/SIFTextractor.h"
+#include "../include/SIFTTest.h"
 
 using namespace std;
 using namespace ORB_SIFT;
@@ -122,12 +123,13 @@ void SaveResult(const cv::Mat &image,const string& SaveFileName,Rect roi,
     cv::putText(LabelROI_im,text,Point(roi.x,roi.y-20),font_face,font_scale,
             cv::Scalar(255,0,0),thickness,8,0);
 
-    cout<<SaveFileName<<endl;
-    cv::imshow("Save",LabelROI_im);
-    waitKey();
+    //cout<<SaveFileName<<endl;
+    //cv::imshow("Save",LabelROI_im);
+    //waitKey();
     if(false==cv::imwrite(SaveFileName,LabelROI_im))
         cout<<"fail to save."<<endl;
 }
+//void DrawSIFT(cv::Mat& img, vector<cv::KeyPoint>& sift_keys){}
 void SaveResult_SIFT(const cv::Mat &image,const string& SaveFileName,Rect roi,
                 vector<cv::KeyPoint>& KeyPoints)
 {
@@ -139,7 +141,7 @@ void SaveResult_SIFT(const cv::Mat &image,const string& SaveFileName,Rect roi,
     //TODO:show keypoint location and quantities
     int nKeys=KeyPoints.size();
     ///draw KeyPoints
-    cv::drawKeypoints(LabelROI_im,KeyPoints,LabelROI_im);
+    cv::drawKeypoints(LabelROI_im,KeyPoints,LabelROI_im,Scalar::all(-1),4);
 
     ///putText
     stringstream ss;
@@ -154,9 +156,9 @@ void SaveResult_SIFT(const cv::Mat &image,const string& SaveFileName,Rect roi,
     cv::putText(LabelROI_im,text,Point(roi.x,roi.y-20),font_face,font_scale,
                 cv::Scalar(255,0,0),thickness,8,0);
 
-    cout<<SaveFileName<<endl;
-    cv::imshow("Save",LabelROI_im);
-    waitKey();
+    //cout<<SaveFileName<<endl;
+    //cv::imshow("Save",LabelROI_im);
+    //waitKey();
     if(false==cv::imwrite(SaveFileName,LabelROI_im))
         cout<<"fail to save."<<endl;
 }
@@ -182,7 +184,7 @@ int main(int argc, char** argv)
     cout<<endl<<nImages<<" pictures."<<endl;
 
     ORBTest ORB_Test(argv[1]);
-    SIFTextractor SIFT_Test;
+    SIFTTest SIFT_Test(argv[1]);
 
     cv::Mat im;
     cv::Mat image_ROI;
@@ -213,9 +215,11 @@ int main(int argc, char** argv)
         WarpROI(im,ROI,image_ROI);
         //ORBTest
         ORB_Test.Extract_ORB(image_ROI);
+        //ORB_Test.Extract_ORB(im);
+
         //SIFTTest
         SIFT_Test.Extract_SIFT(image_ROI);
-
+        //SIFT_Test.Extract_SIFT(im);
 
         cout<<"Extract "<<ORB_Test.mvKeys.size()<<" ORBPoints."<<endl;
         cout<<"Extract "<<SIFT_Test.mSift_keys.size()<<" SIFTPoints."<<endl;

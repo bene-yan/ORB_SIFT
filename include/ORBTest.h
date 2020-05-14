@@ -36,7 +36,7 @@ namespace ORB_SIFT{
 
         std::vector<cv::KeyPoint> mvKeys;
         cv::Mat mDescriptors;
-
+    protected:
         cv::Point mROIOrigin;    //兴趣区域的原点在原图中坐标
 
 
