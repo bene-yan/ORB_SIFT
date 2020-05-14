@@ -80,6 +80,7 @@ namespace ORB_SIFT{
 
         //int fIniThFAST = fSettings["ORBextractor.iniThFAST"];
         //int fMinThFAST = fSettings["ORBextractor.minThFAST"];
+        //TODO:tuna sift param
         sift_detector=cv::xfeatures2d::SiftFeatureDetector::create(nFeatures,
                 nOctaveLayers,contrastThreshold,edgeThreshold,fScaleFactor);
     }
