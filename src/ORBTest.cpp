@@ -97,6 +97,21 @@ namespace ORB_SIFT{
         //cv::Mat image_ROI;
         //DrawROI(im,0.333333,0.2,image_ROI);
         (*mpORBextractor)(im,cv::Mat(),mvKeys,mDescriptors);
+        Shift_Keys_From_ROI_To_Origin();
+
+    }
+    void ORBTest::Shift_Keys_From_ROI_To_Origin()
+    {
+        size_t N=mvKeys.size();
+        for(size_t ni=0;ni<N;ni++)
+        {
+            mvKeys[ni].pt.x+=mROIOrigin.x;
+            mvKeys[ni].pt.y+=mROIOrigin.y;
+        }
+    }
+    void ORBTest::GetROIOrigin(cv::Rect roi)
+    {
+        mROIOrigin=roi.tl();
     }
 
     //cv::Mat DrawROI(cv::InputArray image,const int start_col,const int start_row, const int width,const int height)
@@ -120,5 +135,6 @@ namespace ORB_SIFT{
         //imwrite("../ROI_image/");
         waitKey();
     }
+
 }
 

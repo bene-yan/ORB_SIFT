@@ -13,7 +13,9 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv/cv.h>
 
-#include "ORBTest.h"
+#include "../include/ORBTest.h"
+#include "../include/SIFTextractor.h"
+
 using namespace std;
 using namespace ORB_SIFT;
 using namespace cv;
@@ -89,17 +91,68 @@ void SaveResult(const cv::Mat &image,const string& SaveFileName,Rect roi,
     //cv::imshow("ROIsrc",LabelROI_im);
     //TODO:show keypoint location and quantities
     int nKeys=KeyPoints.size();
+    ///draw KeyPoints
+    const float r = 5;
+    //cv::Point origin=roi.tl();
+
+    for(int ni=0;ni<nKeys;ni++)
+    {
+        cv::Point2f pt1,pt2;
+        pt1.x=KeyPoints[ni].pt.x-r;//+origin.x
+        pt1.y=KeyPoints[ni].pt.y-r;//origin.y+
+        pt2.x=KeyPoints[ni].pt.x+r;//origin.x+
+        pt2.y=KeyPoints[ni].pt.y+r;//origin.y+
+
+        cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,255,0));
+        cv::circle(LabelROI_im,KeyPoints[ni].pt,
+                //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
+                2,cv::Scalar(0,255,0),-1);
+
+    }
+    ///putText
     stringstream ss;
     ss<<nKeys;
-
     string text=ss.str()+" ORBKeyPoints";
+
     int font_face=cv::FONT_HERSHEY_COMPLEX;
     double font_scale=0.5;
     int thickness=1;
     int baseline;
     cv::Size text_size=cv::getTextSize(text,font_face,font_scale,thickness,&baseline);
     cv::putText(LabelROI_im,text,Point(roi.x,roi.y-20),font_face,font_scale,
-            cv::Scalar(255,255,255),thickness,8,0);
+            cv::Scalar(255,0,0),thickness,8,0);
+
+    cout<<SaveFileName<<endl;
+    cv::imshow("Save",LabelROI_im);
+    waitKey();
+    if(false==cv::imwrite(SaveFileName,LabelROI_im))
+        cout<<"fail to save."<<endl;
+}
+void SaveResult_SIFT(const cv::Mat &image,const string& SaveFileName,Rect roi,
+                vector<cv::KeyPoint>& KeyPoints)
+{
+    //cv::Mat src_im=image.clone();   //copy source image
+    cv::Mat LabelROI_im=image.clone();
+    cvtColor(LabelROI_im,LabelROI_im,CV_GRAY2RGB);
+    cv::rectangle(LabelROI_im,roi,Scalar(255,0,0),2);   //框出兴趣区域 颜色BGR
+    //cv::imshow("ROIsrc",LabelROI_im);
+    //TODO:show keypoint location and quantities
+    int nKeys=KeyPoints.size();
+    ///draw KeyPoints
+    cv::drawKeypoints(LabelROI_im,KeyPoints,LabelROI_im);
+
+    ///putText
+    stringstream ss;
+    ss<<nKeys;
+    string text=ss.str()+" SIFTKeyPoints";
+
+    int font_face=cv::FONT_HERSHEY_COMPLEX;
+    double font_scale=0.5;
+    int thickness=1;
+    int baseline;
+    cv::Size text_size=cv::getTextSize(text,font_face,font_scale,thickness,&baseline);
+    cv::putText(LabelROI_im,text,Point(roi.x,roi.y-20),font_face,font_scale,
+                cv::Scalar(255,0,0),thickness,8,0);
 
     cout<<SaveFileName<<endl;
     cv::imshow("Save",LabelROI_im);
@@ -122,12 +175,23 @@ int main(int argc, char** argv)
     LoadImages(string(argv[2]), vstrImageFilenames, vTimestamps);
 
     int nImages = vstrImageFilenames.size();
+    if(nImages==0)
+    {
+        cerr<<"No image in"<<string(argv[2])<<endl;
+    }
     cout<<endl<<nImages<<" pictures."<<endl;
-    ORBTest ORBExtractorTest(argv[1]);
+
+    ORBTest ORB_Test(argv[1]);
+    SIFTextractor SIFT_Test;
+
     cv::Mat im;
     cv::Mat image_ROI;
     Rect ROI;
     string SavePath="../Result_imgs/";
+    string Sequence=string(argv[2]);
+    size_t len=Sequence.length();
+    Sequence=Sequence.substr(len-2,2);
+
     for(int ni=0;ni<nImages;ni++)
     {
         // Read image from file
@@ -142,20 +206,30 @@ int main(int argc, char** argv)
             cout<<"image size:"<<im.cols<<" cols, "<<im.rows<<" rows."<<endl;
             Compute_ROI(im,0.333333,0.2,ROI);
             cout<<endl<<"ROI Position(x,y):"<<ROI.x<<","<<ROI.y<<" ."<<endl;//<<ROI.area()<<endl;
+            ORB_Test.GetROIOrigin(ROI); //获取ROI原点坐标
+            SIFT_Test.GetROIOrigin(ROI);
         }
 
         WarpROI(im,ROI,image_ROI);
         //ORBTest
-        ORBExtractorTest.Extract_ORB(image_ROI);
+        ORB_Test.Extract_ORB(image_ROI);
+        //SIFTTest
+        SIFT_Test.Extract_SIFT(image_ROI);
 
-        cout<<"Extract "<<ORBExtractorTest.mvKeys.size()<<" ORBPoints."<<endl;
+
+        cout<<"Extract "<<ORB_Test.mvKeys.size()<<" ORBPoints."<<endl;
+        cout<<"Extract "<<SIFT_Test.mSift_keys.size()<<" SIFTPoints."<<endl;
 
 
         //Show result
         stringstream ss;
         ss << setfill('0') << setw(6) << ni;
-        string FileName= SavePath + ss.str() + ".png";
-        SaveResult(im,FileName,ROI,ORBExtractorTest.mvKeys);
+        string FileName= SavePath +Sequence+"/"+ ss.str() + ".png";
+        string Sift_FileName= SavePath +Sequence+"/SIFT/"+ ss.str() + ".png";
+
+        SaveResult(im,FileName,ROI,ORB_Test.mvKeys);
+        SaveResult_SIFT(im,Sift_FileName,ROI,SIFT_Test.mSift_keys);
+
 
     }
 
