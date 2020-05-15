@@ -83,14 +83,15 @@ void WarpROI(const cv::Mat& image,
 
 }
 void SaveResult(const cv::Mat &image,const string& SaveFileName,Rect roi,
-        vector<cv::KeyPoint>& KeyPoints)
+                ORBTest &orbTest)//vector<cv::KeyPoint>& KeyPoints)
 {
     //cv::Mat src_im=image.clone();   //copy source image
     cv::Mat LabelROI_im=image.clone();
     cvtColor(LabelROI_im,LabelROI_im,CV_GRAY2RGB);
     cv::rectangle(LabelROI_im,roi,Scalar(255,0,0),2);   //框出兴趣区域 颜色BGR
     //cv::imshow("ROIsrc",LabelROI_im);
-    //TODO:show keypoint location and quantities
+    //TO-DO:show keypoint location and quantities
+    vector<cv::KeyPoint> KeyPoints(orbTest.mvKeys);
     int nKeys=KeyPoints.size();
     ///draw KeyPoints
     const float r = 5;
@@ -104,10 +105,18 @@ void SaveResult(const cv::Mat &image,const string& SaveFileName,Rect roi,
         pt2.x=KeyPoints[ni].pt.x+r;//origin.x+
         pt2.y=KeyPoints[ni].pt.y+r;//origin.y+
 
-        cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,255,0));
-        cv::circle(LabelROI_im,KeyPoints[ni].pt,
-                //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
-                2,cv::Scalar(0,255,0),-1);
+        if(orbTest.vnMatches12[ni]>0){
+            cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,255,0));
+            cv::circle(LabelROI_im,KeyPoints[ni].pt,
+                    //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
+                       2,cv::Scalar(0,255,0),-1);
+        }
+        else{
+            cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,0,255));
+            cv::circle(LabelROI_im,KeyPoints[ni].pt,
+                    //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
+                       2,cv::Scalar(0,0,255),-1);
+        }
 
     }
     ///putText
@@ -138,7 +147,7 @@ void SaveResult_SIFT(const cv::Mat &image,const string& SaveFileName,Rect roi,
     cvtColor(LabelROI_im,LabelROI_im,CV_GRAY2RGB);
     cv::rectangle(LabelROI_im,roi,Scalar(255,0,0),2);   //框出兴趣区域 颜色BGR
     //cv::imshow("ROIsrc",LabelROI_im);
-    //TODO:show keypoint location and quantities
+    //TO-DO:show keypoint location and quantities
     int nKeys=KeyPoints.size();
     ///draw KeyPoints
     cv::drawKeypoints(LabelROI_im,KeyPoints,LabelROI_im,Scalar::all(-1),4);
@@ -214,7 +223,8 @@ int main(int argc, char** argv)
 
         WarpROI(im,ROI,image_ROI);
         //ORBTest
-        ORB_Test.Extract_ORB(image_ROI);
+        //ORB_Test.Extract_ORB(image_ROI);
+        ORB_Test.GrabImage(image_ROI,vTimestamps[ni]);
         //ORB_Test.Extract_ORB(im);
 
         //SIFTTest
@@ -231,7 +241,8 @@ int main(int argc, char** argv)
         string FileName= SavePath +Sequence+"/"+ ss.str() + ".png";
         string Sift_FileName= SavePath +Sequence+"/SIFT/"+ ss.str() + ".png";
 
-        SaveResult(im,FileName,ROI,ORB_Test.mvKeys);
+        //SaveResult(im,FileName,ROI,ORB_Test.mvKeys);
+        SaveResult(im,FileName,ROI,ORB_Test);
         SaveResult_SIFT(im,Sift_FileName,ROI,SIFT_Test.mSift_keys);
 
 

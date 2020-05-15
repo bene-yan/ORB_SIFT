@@ -26,8 +26,8 @@
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
 
-#include"MapPoint.h"
-#include"KeyFrame.h"
+//#include"MapPoint.h"
+//#include"KeyFrame.h"
 #include"Frame.h"
 
 
@@ -66,7 +66,7 @@ public:
     int SearchByBoW(KeyFrame *pKF1, KeyFrame* pKF2, std::vector<MapPoint*> &vpMatches12);
 
     // Matching for the Map Initialization (only used in the monocular case)
-    int SearchForInitialization(Frame &F1, Frame &F2, std::vector<cv::Point2f> &vbPrevMatched, std::vector<int> &vnMatches12, int windowSize=10);
+    int SearchForInitialization(Frame &F1, Frame &F2, std::vector<int> &vnMatches12, int windowSize=10);
 
     // Matching to triangulate new MapPoints. Check Epipolar Constraint.
     int SearchForTriangulation(KeyFrame *pKF1, KeyFrame* pKF2, cv::Mat F12,

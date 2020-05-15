@@ -16,10 +16,9 @@
 
 using namespace std;
 using namespace cv;
-namespace ORB_SIFT{
+namespace ORB_SIFT {
 
-    ORBTest::ORBTest(std::string strSettingPath)
-    {
+    ORBTest::ORBTest(std::string strSettingPath) {
         // Load camera parameters from settings file
 
         cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
@@ -28,21 +27,20 @@ namespace ORB_SIFT{
         float cx = fSettings["Camera.cx"];
         float cy = fSettings["Camera.cy"];
 
-        cv::Mat K = cv::Mat::eye(3,3,CV_32F);
-        K.at<float>(0,0) = fx;
-        K.at<float>(1,1) = fy;
-        K.at<float>(0,2) = cx;
-        K.at<float>(1,2) = cy;
+        cv::Mat K = cv::Mat::eye(3, 3, CV_32F);
+        K.at<float>(0, 0) = fx;
+        K.at<float>(1, 1) = fy;
+        K.at<float>(0, 2) = cx;
+        K.at<float>(1, 2) = cy;
         K.copyTo(mK);
 
-        cv::Mat DistCoef(4,1,CV_32F);
+        cv::Mat DistCoef(4, 1, CV_32F);
         DistCoef.at<float>(0) = fSettings["Camera.k1"];
         DistCoef.at<float>(1) = fSettings["Camera.k2"];
         DistCoef.at<float>(2) = fSettings["Camera.p1"];
         DistCoef.at<float>(3) = fSettings["Camera.p2"];
         const float k3 = fSettings["Camera.k3"];
-        if(k3!=0)
-        {
+        if (k3 != 0) {
             DistCoef.resize(5);
             DistCoef.at<float>(4) = k3;
         }
@@ -51,8 +49,8 @@ namespace ORB_SIFT{
         mbf = fSettings["Camera.bf"];
 
         float fps = fSettings["Camera.fps"];
-        if(fps==0)
-            fps=30;
+        if (fps == 0)
+            fps = 30;
 
         // Max/Min Frames to insert keyframes and to check relocalisation
         //mMinFrames = 0;
@@ -65,7 +63,7 @@ namespace ORB_SIFT{
         cout << "- cy: " << cy << endl;
         cout << "- k1: " << DistCoef.at<float>(0) << endl;
         cout << "- k2: " << DistCoef.at<float>(1) << endl;
-        if(DistCoef.rows==5)
+        if (DistCoef.rows == 5)
             cout << "- k3: " << DistCoef.at<float>(4) << endl;
         cout << "- p1: " << DistCoef.at<float>(2) << endl;
         cout << "- p2: " << DistCoef.at<float>(3) << endl;
@@ -75,7 +73,7 @@ namespace ORB_SIFT{
         int nRGB = fSettings["Camera.RGB"];
         mbRGB = nRGB;
 
-        if(mbRGB)
+        if (mbRGB)
             cout << "- color order: RGB (ignored if grayscale)" << endl;
         else
             cout << "- color order: BGR (ignored if grayscale)" << endl;
@@ -88,15 +86,32 @@ namespace ORB_SIFT{
         int fIniThFAST = fSettings["ORBextractor.iniThFAST"];
         int fMinThFAST = fSettings["ORBextractor.minThFAST"];
 
-        mpORBextractor=new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+        mpORBextractor = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
 
     }
 
+    void ORBTest::GrabImage(const cv::Mat &img, const double &timestamp) {
+        mLastFrame = Frame(mCurrentFrame);
+        mCurrentFrame = Frame(img, timestamp, mpORBextractor, mK, mDistCoef, mbf);
+
+        ORBMatch();
+    }
+
+    void ORBTest::ORBMatch()
+    {
+        if(mCurrentFrame.mnId==0)
+            return;
+
+        ORBmatcher matcher;
+        int matches=matcher.SearchForInitialization(mLastFrame,mCurrentFrame,vnMatches12,100);
+        cout<<matches<<"matches."<<endl;
+    }
     void ORBTest::Extract_ORB(const cv::Mat &im)
     {
         //cv::Mat image_ROI;
         //DrawROI(im,0.333333,0.2,image_ROI);
-        (*mpORBextractor)(im,cv::Mat(),mvKeys,mDescriptors);
+        //(*mpORBextractor)(im,cv::Mat(),mvKeys,mDescriptors);
+        mvKeys.assign(mCurrentFrame.mvKeys.begin(),mCurrentFrame.mvKeys.end());
         Shift_Keys_From_ROI_To_Origin();
 
     }

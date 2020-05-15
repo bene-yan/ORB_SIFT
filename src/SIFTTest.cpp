@@ -72,9 +72,9 @@ namespace ORB_SIFT{
         // Load SIFT parameters
 
         int nFeatures = fSettings["ORBextractor.nFeatures"];
-        int nOctaveLayers=3;
-        double contrastThreshold=0.038; //the larger the less feature
-        double edgeThreshold=10;    //the larger the more feature
+        int nOctaveLayers=fSettings["SIFT.nOctaveLayers"];
+        double contrastThreshold=fSettings["SIFT.contrastThreshold"]; //the larger the less feature
+        double edgeThreshold=fSettings["SIFT.edgeThreshold"];    //the larger the more feature
         float fScaleFactor = fSettings["ORBextractor.scaleFactor"]; //sigma
         int nLevels = fSettings["ORBextractor.nLevels"];
 
