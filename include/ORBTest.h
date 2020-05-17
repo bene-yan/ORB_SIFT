@@ -25,6 +25,10 @@ namespace ORB_SIFT{
         void Match_ORB();
         void GetROIOrigin(cv::Rect roi);
         void GrabImage(const cv::Mat &img, const double &timestamp);
+        void Compute_HW_ROI();
+        void WarpROI();
+        void DrawMatches();
+        void SaveResult(const string& SaveFileName);
     protected:
         void Shift_Keys_From_ROI_To_Origin();
 
@@ -34,6 +38,7 @@ namespace ORB_SIFT{
                  cv::Mat& ROIimage);
 
         void ORBMatch();
+        void CopyKeys();
     public:
         //camera parameter
         cv::Mat mK;
@@ -42,15 +47,25 @@ namespace ORB_SIFT{
         bool mbRGB;
         ORBextractor* mpORBextractor;
 
-        std::vector<cv::KeyPoint> mvKeys;
+        std::vector<cv::KeyPoint> Last_mvKeysROI;
+        std::vector<cv::KeyPoint> Curr_mvKeysROI;
         cv::Mat mDescriptors;
 
         Frame mCurrentFrame;
         Frame mLastFrame;
         vector<int> vnMatches12;
+
+        cv::Mat mCurrentImg;
+        cv::Mat mLastImg;
+        cv::Mat mROI_Img;
+
+        cv::Rect mROI;
+
+        bool mbFirstImg;
     protected:
         cv::Point mROIOrigin;    //兴趣区域的原点在原图中坐标
-
+        int mImg_HEIGHT;
+        int mImg_WIDTH;
 
 
     };

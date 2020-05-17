@@ -91,12 +91,12 @@ void SaveResult(const cv::Mat &image,const string& SaveFileName,Rect roi,
     cv::rectangle(LabelROI_im,roi,Scalar(255,0,0),2);   //框出兴趣区域 颜色BGR
     //cv::imshow("ROIsrc",LabelROI_im);
     //TO-DO:show keypoint location and quantities
-    vector<cv::KeyPoint> KeyPoints(orbTest.mvKeys);
+    vector<cv::KeyPoint> KeyPoints(orbTest.Curr_mvKeysROI);
     int nKeys=KeyPoints.size();
     ///draw KeyPoints
+    //cout<<"draw KeyPoints"<<endl;
     const float r = 5;
     //cv::Point origin=roi.tl();
-
     for(int ni=0;ni<nKeys;ni++)
     {
         cv::Point2f pt1,pt2;
@@ -104,22 +104,37 @@ void SaveResult(const cv::Mat &image,const string& SaveFileName,Rect roi,
         pt1.y=KeyPoints[ni].pt.y-r;//origin.y+
         pt2.x=KeyPoints[ni].pt.x+r;//origin.x+
         pt2.y=KeyPoints[ni].pt.y+r;//origin.y+
-
-        if(orbTest.vnMatches12[ni]>0){
+        if(orbTest.mCurrentFrame.mnId==0)
+        {
             cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,255,0));
             cv::circle(LabelROI_im,KeyPoints[ni].pt,
                     //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
                        2,cv::Scalar(0,255,0),-1);
         }
-        else{
-            cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,0,255));
-            cv::circle(LabelROI_im,KeyPoints[ni].pt,
-                    //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
-                       2,cv::Scalar(0,0,255),-1);
+        else
+        {
+            if(orbTest.vnMatches12[ni]>0){
+                cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,255,0));
+                cv::circle(LabelROI_im,KeyPoints[ni].pt,
+                        //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
+                           2,cv::Scalar(0,255,0),-1);
+            }
+            else{
+                cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,0,255));
+                cv::circle(LabelROI_im,KeyPoints[ni].pt,
+                        //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
+                           2,cv::Scalar(0,0,255),-1);
+            }
+            //DrawORRBMatches();
+            //cv::drawMatches(im,orbTest.mCurrentFrame.mvKeysUn,
+             //       Last_image,orbTest.mLastFrame.mvKeysUn,
+               //     );
         }
+
 
     }
     ///putText
+    //cout<<"putText"<<endl;
     stringstream ss;
     ss<<nKeys;
     string text=ss.str()+" ORBKeyPoints";
@@ -171,6 +186,43 @@ void SaveResult_SIFT(const cv::Mat &image,const string& SaveFileName,Rect roi,
     if(false==cv::imwrite(SaveFileName,LabelROI_im))
         cout<<"fail to save."<<endl;
 }
+void DrawORBMatches(cv::Mat& img1,Frame& LastFrame,
+        cv::Mat& img2,Frame& CurrentFrame,
+        vector<int> vnMatches12,cv::Mat& img_joint)
+{
+
+    cout<<"channels:"<<img1.channels()<<endl;
+        cvtColor(img1,img1,CV_GRAY2RGB);
+        cvtColor(img2,img2,CV_GRAY2RGB);
+
+    cv::drawKeypoints(img1,CurrentFrame.mvKeysUn,img1,Scalar(0,255,0),4);
+    cv::drawKeypoints(img2,LastFrame.mvKeysUn,img2,Scalar(0,255,0),4);
+    //cout<<"Draw Matches"<<endl;
+    int height=img1.rows;
+    int width=img1.cols;
+    //cv::Mat img_joint;
+    img_joint.create(2*height,width,img1.type());
+    cv::Mat topImg=img_joint(Rect(0,0,width,height));
+    img1.copyTo(topImg);
+    cv::Mat bottomImg=img_joint(Rect(0,height,width,height));
+    img2.copyTo(bottomImg);
+
+    cv::Point pt1,pt2;
+
+    for(size_t i=0,N=CurrentFrame.mvKeysUn.size();i<N;i++)
+    {
+        if(vnMatches12[i]>0)
+        {
+            pt1=Point(CurrentFrame.mvKeysUn[i].pt.x,CurrentFrame.mvKeysUn[i].pt.y+height);
+            pt2=LastFrame.mvKeysUn[vnMatches12[i]].pt;
+            cv::line(img_joint,pt1,pt2,Scalar(255,0,0));
+        }
+    }
+    cv::imshow("Match",img_joint);
+    waitKey();
+
+
+}
 
 int main(int argc, char** argv)
 {
@@ -196,6 +248,7 @@ int main(int argc, char** argv)
     SIFTTest SIFT_Test(argv[1]);
 
     cv::Mat im;
+    cv::Mat Last_img;
     cv::Mat image_ROI;
     Rect ROI;
     string SavePath="../Result_imgs/";
@@ -212,6 +265,7 @@ int main(int argc, char** argv)
             cerr << endl << "Failed to load image at: " << vstrImageFilenames[ni] << endl;
             return 1;
         }
+        /*
         if(ni==0)   //Compute_ROI need only first time
         {
             cout<<"image size:"<<im.cols<<" cols, "<<im.rows<<" rows."<<endl;
@@ -222,17 +276,27 @@ int main(int argc, char** argv)
         }
 
         WarpROI(im,ROI,image_ROI);
+         */
         //ORBTest
         //ORB_Test.Extract_ORB(image_ROI);
-        ORB_Test.GrabImage(image_ROI,vTimestamps[ni]);
+        ORB_Test.GrabImage(im,vTimestamps[ni]);
         //ORB_Test.Extract_ORB(im);
 
+        /*
+        if(ORB_Test.mCurrentFrame.mnId>0)
+        {
+            cv::Mat joint_img;
+            DrawORBMatches(Last_img,ORB_Test.mLastFrame,
+                    im,ORB_Test.mCurrentFrame,
+                    ORB_Test.vnMatches12,joint_img);
+        }
+         */
         //SIFTTest
-        SIFT_Test.Extract_SIFT(image_ROI);
+        //SIFT_Test.Extract_SIFT(image_ROI);
         //SIFT_Test.Extract_SIFT(im);
 
-        cout<<"Extract "<<ORB_Test.mvKeys.size()<<" ORBPoints."<<endl;
-        cout<<"Extract "<<SIFT_Test.mSift_keys.size()<<" SIFTPoints."<<endl;
+        cout<<"Extract "<<ORB_Test.Curr_mvKeysROI.size()<<" ORBPoints."<<endl;
+        //cout<<"Extract "<<SIFT_Test.mSift_keys.size()<<" SIFTPoints."<<endl;
 
 
         //Show result
@@ -242,9 +306,11 @@ int main(int argc, char** argv)
         string Sift_FileName= SavePath +Sequence+"/SIFT/"+ ss.str() + ".png";
 
         //SaveResult(im,FileName,ROI,ORB_Test.mvKeys);
-        SaveResult(im,FileName,ROI,ORB_Test);
-        SaveResult_SIFT(im,Sift_FileName,ROI,SIFT_Test.mSift_keys);
+        //SaveResult(im,FileName,ROI,ORB_Test);
+        ORB_Test.SaveResult(FileName);
+        //SaveResult_SIFT(im,Sift_FileName,ROI,SIFT_Test.mSift_keys);
 
+        Last_img=im.clone();
 
     }
 

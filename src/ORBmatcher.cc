@@ -51,7 +51,7 @@ float ORBmatcher::RadiusByViewingCos(const float &viewCos)
         return 4.0;
 }
 
-
+/*
 bool ORBmatcher::CheckDistEpipolarLine(const cv::KeyPoint &kp1,const cv::KeyPoint &kp2,const cv::Mat &F12,const KeyFrame* pKF2)
 {
     // Epipolar line in second image l = x1'F12 = [a b c]
@@ -70,7 +70,7 @@ bool ORBmatcher::CheckDistEpipolarLine(const cv::KeyPoint &kp1,const cv::KeyPoin
 
     return dsqr<3.84*pKF2->mvLevelSigma2[kp2.octave];
 }
-
+*/
 int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<int> &vnMatches12, int windowSize)
     {
     //TODO:怎么匹配？需要什么？
@@ -188,12 +188,13 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<int> &vnMat
 */
         return nmatches;
     }
-
+/*
 int ORBmatcher::SearchFromKeyPointsSet(vector<cv::KeyPoint> &KPs1,vector<cv::KeyPoint> &KPs2, vector<int> &vnMatches12, int windowSize)
 {
     //TODO
 }
-
+*/
+/*
 //TODO:GetFeaturesInArea
 vector<size_t> ORBmatcher::GetFeaturesInArea(const cv::Mat& curr_img,vector<KeyPoint>& LastKPs,
                                              const float  &r, const int minLevel, const int maxLevel)
@@ -250,7 +251,7 @@ vector<size_t> ORBmatcher::GetFeaturesInArea(const cv::Mat& curr_img,vector<KeyP
 
     return vIndices;
 }
-
+*/
 void ORBmatcher::ComputeThreeMaxima(vector<int>* histo, const int L, int &ind1, int &ind2, int &ind3)
 {
     int max1=0;
