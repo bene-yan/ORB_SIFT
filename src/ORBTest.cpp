@@ -6,7 +6,7 @@
 //#include "ORBmatcher.h"
 
 #include <iostream>
-#include<opencv2/core/core.hpp>
+#include <opencv2/core/core.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
@@ -17,6 +17,8 @@
 using namespace std;
 using namespace cv;
 namespace ORB_SIFT {
+
+    ORBTest::ORBTest(){};
 
     ORBTest::ORBTest(std::string strSettingPath):mbFirstImg(true) {
         // Load camera parameters from settings file
@@ -148,7 +150,9 @@ namespace ORB_SIFT {
         cvtColor(CurrImg_RGB,CurrImg_RGB,CV_GRAY2RGB);
 
         cv::drawKeypoints(LastImg_RGB,Last_mvKeysROI,LastImg_RGB,Scalar(0,255,0),0);
+        DrawROI(LastImg_RGB);
         cv::drawKeypoints(CurrImg_RGB,Curr_mvKeysROI,CurrImg_RGB,Scalar(0,255,0),0);
+        DrawROI(CurrImg_RGB);
         //cout<<"Draw Matches"<<endl;
 
         //int height=img1.rows;
@@ -258,15 +262,7 @@ namespace ORB_SIFT {
         Curr_mvKeysROI.assign(mCurrentFrame.mvKeys.begin(),mCurrentFrame.mvKeys.end());
         Shift_Keys_From_ROI_To_Origin();
     }
-    void ORBTest::Extract_ORB(const cv::Mat &im)
-    {
-        //cv::Mat image_ROI;
-        //DrawROI(im,0.333333,0.2,image_ROI);
-        //(*mpORBextractor)(im,cv::Mat(),mvKeys,mDescriptors);
 
-        //Shift_Keys_From_ROI_To_Origin();
-
-    }
     void ORBTest::Shift_Keys_From_ROI_To_Origin()
     {
         size_t N=Curr_mvKeysROI.size();
@@ -278,31 +274,16 @@ namespace ORB_SIFT {
             Curr_mvKeysROI[ni].pt.y+=mROI.tl().y;
         }
     }
-    void ORBTest::GetROIOrigin(cv::Rect roi)
-    {
-        mROIOrigin=roi.tl();
-    }
 
     //cv::Mat DrawROI(cv::InputArray image,const int start_col,const int start_row, const int width,const int height)
-    void ORBTest::DrawROI(const cv::Mat& image,
-            const double lower_row,const double middle_col,
-             cv::Mat& ROIimage)
+    void ORBTest::DrawROI(cv::Mat& image)
     {
-        //cv::Mat im_Mat=image.getMat();
-        //cout<<lower_row<<" "<<middle_col<<endl;
-        //cout<<"Colums:"<<image.cols<<" Rows:"<<image.rows<<endl;
-        const int x=(0.5-0.5*middle_col)*(image.cols);  //起始列
-        const int y=(1-lower_row)*(image.rows); //起始行
-        const int width=middle_col*(image.cols);
-        const int height=lower_row*(image.rows);
-        //cout<<"x:"<<x<<" y:"<<y<<" w:"<<width<<" h:"<<height<<endl;
-        cv::Mat LabelROI_im=image.clone();
-        rectangle(LabelROI_im,Rect(x,y,width,height),Scalar(255,0,0),2);
-        cv::imshow("ROIsrc",LabelROI_im);
-        ROIimage=image(Rect(x,y,width,height));//.clone(); //这样可能并没有发生复制，只是ROIimage指向了ROI区域？
+        rectangle(image,mROI,Scalar(255,0,0),2);
+        //cv::imshow("ROIsrc",LabelROI_im);
+        //ROIimage=image(Rect(x,y,width,height));//.clone(); //这样可能并没有发生复制，只是ROIimage指向了ROI区域？
         //cv::imshow("ROI",ROIimage);
         //imwrite("../ROI_image/");
-        waitKey();
+        //waitKey();
     }
 
 }

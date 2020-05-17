@@ -21,24 +21,21 @@ namespace ORB_SIFT{
         ORBTest();
         ORBTest(std::string strSettingPath);
         ~ORBTest(){delete mpORBextractor;}
-        void Extract_ORB(const cv::Mat &im);
-        void Match_ORB();
-        void GetROIOrigin(cv::Rect roi);
+
         void GrabImage(const cv::Mat &img, const double &timestamp);
+
+        void SaveResult(const string& SaveFileName);
+    protected:
         void Compute_HW_ROI();
         void WarpROI();
         void DrawMatches();
-        void SaveResult(const string& SaveFileName);
-    protected:
         void Shift_Keys_From_ROI_To_Origin();
 
 
-        void DrawROI(const cv::Mat& image,
-                const double lower_row,const double middle_col,
-                 cv::Mat& ROIimage);
+        void DrawROI(cv::Mat& image);
 
-        void ORBMatch();
-        void CopyKeys();
+         void ORBMatch() ;
+         void CopyKeys() ;
     public:
         //camera parameter
         cv::Mat mK;

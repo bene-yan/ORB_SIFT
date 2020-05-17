@@ -3,13 +3,16 @@
 //
 
 #include "../include/SIFTTest.h"
+using namespace std;
 namespace ORB_SIFT{
     SIFTTest::SIFTTest(){
         sift_detector=cv::xfeatures2d::SiftFeatureDetector::create();
+        sift_Descriptor=cv::xfeatures2d::SiftDescriptorExtractor::create();
+        sift_matcher=cv::BFMatcher::create();
     }
     SIFTTest::SIFTTest(std::string strSettingPath){
         // Load camera parameters from settings file
-
+        mbFirstImg=true;
         cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
         /*
         float fx = fSettings["Camera.fx"];
@@ -83,13 +86,64 @@ namespace ORB_SIFT{
         //TODO:tuna sift param
         sift_detector=cv::xfeatures2d::SiftFeatureDetector::create(nFeatures,
                 nOctaveLayers,contrastThreshold,edgeThreshold,fScaleFactor);
+
+        sift_Descriptor=cv::xfeatures2d::SiftDescriptorExtractor::create();
+
+        sift_matcher=cv::BFMatcher::create();
+    }
+
+    void SIFTTest::GrabImage_sift(const cv::Mat &img, const double &timestamp) {
+
+        UpdateLast(img);
+        if(mbFirstImg)
+        {
+            Compute_HW_ROI();
+            mbFirstImg=false;
+        }
+        WarpROI();
+
+
+        Extract_SIFT(mROI_Img); //提取sift特征保存到Curr_mvKeysROI //并计算描述子
+
+        if(Last_mvKeysROI.size()>0)
+        {
+            SIFTMatch();
+        }
+
+
+
+
     }
 
     void SIFTTest::Extract_SIFT(const cv::Mat &im){
-        sift_detector->detect(im,mSift_keys);
+        sift_detector->detect(im,Curr_mvKeysROI);
         Shift_Keys_From_ROI_To_Origin();    //调用此函数前需要先调用GetROIOrigin
+        sift_Descriptor->compute(mROI_Img,Curr_mvKeysROI,mDescriptors_Curr);
     }
 
+    void SIFTTest::SIFTMatch()
+    {
+
+        sift_matcher->match(mDescriptors_Curr,mDescriptors_Last,mMatches);
+        cout<<mMatches.size()<<" sift matches."<<endl;
+
+        cv::Mat img_matches;
+        cv::drawMatches(mCurrentImg,Curr_mvKeysROI,mLastImg,Last_mvKeysROI,
+                        mMatches,img_matches);
+
+        cv::imshow("sift_matches",img_matches);
+        cv::waitKey();
+    }
+
+    void SIFTTest::UpdateLast(const cv::Mat& img)
+    {
+        mLastImg=mCurrentImg;
+        mCurrentImg=img;
+        Last_mvKeysROI=Curr_mvKeysROI;
+        mDescriptors_Last=mDescriptors_Curr;
+
+    }
+/*
     //调用此函数前需要先调用GetROIOrigin
     void SIFTTest::Shift_Keys_From_ROI_To_Origin()
     {
@@ -105,7 +159,7 @@ namespace ORB_SIFT{
     {
         mROIOrigin=roi.tl();
     }
-
+*/
     //void SIFTTest::DrawFeatures(){}
 
 
