@@ -89,7 +89,7 @@ namespace ORB_SIFT{
 
         sift_Descriptor=cv::xfeatures2d::SiftDescriptorExtractor::create();
 
-        sift_matcher=cv::BFMatcher::create();
+        sift_matcher=cv::BFMatcher::create(cv::NORM_L2,true);
     }
 
     void SIFTTest::GrabImage_sift(const cv::Mat &img, const double &timestamp) {
@@ -108,6 +108,7 @@ namespace ORB_SIFT{
         if(Last_mvKeysROI.size()>0)
         {
             SIFTMatch();
+            FindHomography();
         }
 
 
@@ -117,22 +118,52 @@ namespace ORB_SIFT{
 
     void SIFTTest::Extract_SIFT(const cv::Mat &im){
         sift_detector->detect(im,Curr_mvKeysROI);
-        Shift_Keys_From_ROI_To_Origin();    //调用此函数前需要先调用GetROIOrigin
+        //CullingZeroLevel();
         sift_Descriptor->compute(mROI_Img,Curr_mvKeysROI,mDescriptors_Curr);
+        //sift_Descriptor->compute(mROI_Img,mvKeysROI_0_Curr,mDescriptors_Curr);
+
+        Shift_Keys_From_ROI_To_Origin();
+    }
+    void SIFTTest::CullingZeroLevel()
+    {
+        for(size_t i=0,N=Curr_mvKeysROI.size();i<N;i++)
+        {
+            int level=Curr_mvKeysROI[i].octave;
+            if(level>0)
+                continue;
+            mvKeysROI_0_Curr.push_back(Curr_mvKeysROI[i]);
+        }
     }
 
     void SIFTTest::SIFTMatch()
     {
 
-        sift_matcher->match(mDescriptors_Curr,mDescriptors_Last,mMatches);
+        sift_matcher->match(mDescriptors_Last,mDescriptors_Curr,mMatches);
+
         cout<<mMatches.size()<<" sift matches."<<endl;
 
         cv::Mat img_matches;
-        cv::drawMatches(mCurrentImg,Curr_mvKeysROI,mLastImg,Last_mvKeysROI,
-                        mMatches,img_matches);
+        cv::drawMatches(mLastImg,Last_mvKeysROI,mCurrentImg,Curr_mvKeysROI,
+                        mMatches,img_matches,
+                        cv::Scalar::all(-1),cv::Scalar(0,0,255));
+        //cv::drawMatches(mLastImg,mvKeysROI_0_Last,mCurrentImg,mvKeysROI_0_Curr,
+        //                        mMatches,img_matches);
+
 
         cv::imshow("sift_matches",img_matches);
         cv::waitKey();
+    }
+    void SIFTTest::FindHomography()
+    {
+        vector<cv::Point2f> Keypoints_last;
+        vector<cv::Point2f> Keypoints_curr;
+        for(int i=0;i<(int)mMatches.size();i++)
+        {
+            Keypoints_last.push_back(Last_mvKeysROI[mMatches[i].queryIdx].pt);
+            Keypoints_curr.push_back(Curr_mvKeysROI[mMatches[i].trainIdx].pt);
+        }
+        cv::Mat H_sift=cv::findHomography(Keypoints_last,Keypoints_curr,cv::RANSAC);
+        cout<<cv::format(H_sift,cv::Formatter::FMT_C)<<";"<<endl;
     }
 
     void SIFTTest::UpdateLast(const cv::Mat& img)
@@ -141,6 +172,7 @@ namespace ORB_SIFT{
         mCurrentImg=img;
         Last_mvKeysROI=Curr_mvKeysROI;
         mDescriptors_Last=mDescriptors_Curr;
+        mvKeysROI_0_Last=mvKeysROI_0_Curr;
 
     }
 /*

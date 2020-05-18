@@ -25,8 +25,10 @@ namespace ORB_SIFT{
         //~SIFTextractor(){delete  sift_detector;}  //这个析构会发生段错误，难道是sift_detector已经销毁了？
         void GrabImage_sift(const cv::Mat &img, const double &timestamp);
         void Extract_SIFT(const cv::Mat &im);
+        void CullingZeroLevel();
         void SIFTMatch();
         void UpdateLast(const cv::Mat& img);
+        void FindHomography();
         //void Shift_Keys_From_ROI_To_Origin();
         //void GetROIOrigin(cv::Rect roi);
         //void DrawFeatures();
@@ -40,7 +42,8 @@ namespace ORB_SIFT{
         vector<cv::DMatch> mMatches;
 
     public:
-
+        std::vector<cv::KeyPoint> mvKeysROI_0_Last;
+        std::vector<cv::KeyPoint> mvKeysROI_0_Curr;
         std::vector<cv::KeyPoint> mSift_keys;
         cv::Point mROIOrigin;    //兴趣区域的原点在原图中坐标
 

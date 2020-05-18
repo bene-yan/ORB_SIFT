@@ -111,6 +111,7 @@ namespace ORB_SIFT {
         {
             ORBMatch();
             DrawMatches();
+            findHomography();
         }
         mLastImg=mCurrentImg;
 
@@ -256,6 +257,24 @@ namespace ORB_SIFT {
         ORBmatcher matcher(0.9,true);
         int matches=matcher.SearchForInitialization(mCurrentFrame,mLastFrame,vnMatches12,25);
         cout<<matches<<" matches."<<endl;
+    }
+    void ORBTest::findHomography()
+    {
+        vector<cv::Point2f> KeyPoints1(vnMatches12.size()); //上一帧中有对象的特征点
+        vector<cv::Point2f> KeyPoints2(vnMatches12.size()); //当前帧中有对象的特征点
+
+        for(size_t i=0,iend=vnMatches12.size();i<iend;i++)
+        {
+            if(vnMatches12[i]>0)
+            {
+
+                KeyPoints1.push_back(Curr_mvKeysROI[i].pt);
+                KeyPoints2.push_back(Last_mvKeysROI[vnMatches12[i]].pt);//是这里发生了访问越界
+            }
+
+        }
+        cv::Mat H_orb=cv::findHomography(KeyPoints1,KeyPoints2,cv::RANSAC);
+        cout<<cv::format(H_orb,cv::Formatter::FMT_C)<<";"<<endl;
     }
     void ORBTest::CopyKeys()
     {
