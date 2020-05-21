@@ -8,6 +8,8 @@
 #include <vector>
 #include<iomanip>
 
+#include<chrono>
+
 #include <opencv2/opencv.hpp>   //rectanlge need this header
 #include<opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -125,7 +127,7 @@ int main(int argc, char** argv)
     SIFTTest SIFT_Test(argv[1]);
 
     cv::Mat im;
-    cv::Mat Last_img;
+    //cv::Mat Last_img;
     string SavePath="../Result_imgs/";
     string Sequence=string(argv[2]);
     size_t len=Sequence.length();
@@ -141,19 +143,43 @@ int main(int argc, char** argv)
             return 1;
         }
 
+
         //ORBTest
+        #ifdef COMPILEDWITHC11
+                std::chrono::steady_clock::time_point Start;
+                std::chrono::steady_clock::time_point Done;
+        #else
+                std::chrono::monotonic_clock::time_point Start;
+                std::chrono::monotonic_clock::time_point Done;
+        #endif
+
+        #ifdef COMPILEDWITHC11
+                Start=std::chrono::steady_clock::now();
+        #else
+                Start=std::chrono::monotonic_clock::now();
+        #endif
         //ORB_Test.Extract_ORB(image_ROI);
         ORB_Test.GrabImage(im,vTimestamps[ni]);
         //ORB_Test.Extract_ORB(im);
+        #ifdef COMPILEDWITHC11
+                Done=std::chrono::steady_clock::now();
+        #else
+                Done=std::chrono::monotonic_clock::now();
+        #endif
+
+        //std::chrono::duration<double,std::milli>
+        std::chrono::duration<double> Time_cost
+                =std::chrono::duration_cast<std::chrono::duration<double>>(Done-Start);
+        std::cout<<"Spend "<<Time_cost.count()<<" Second."<<endl;
 
 
         //SIFTTest
         //SIFT_Test.Extract_SIFT(image_ROI);
         //SIFT_Test.Extract_SIFT(im);
-        SIFT_Test.GrabImage_sift(im,vTimestamps[ni]);
+        //SIFT_Test.GrabImage_sift(im,vTimestamps[ni]);
 
         cout<<"Extract "<<ORB_Test.Curr_mvKeysROI.size()<<" ORBPoints."<<endl;
-        cout<<"Extract "<<SIFT_Test.Curr_mvKeysROI.size()<<" SIFTPoints."<<endl;
+        //cout<<"Extract "<<SIFT_Test.Curr_mvKeysROI.size()<<" SIFTPoints."<<endl;
 
 
         //Show result
@@ -167,7 +193,7 @@ int main(int argc, char** argv)
         ORB_Test.SaveResult(FileName);
         //SaveResult_SIFT(im,Sift_FileName,ROI,SIFT_Test.mSift_keys);
 
-        Last_img=im.clone();
+        //Last_img=im.clone();
 
     }
 

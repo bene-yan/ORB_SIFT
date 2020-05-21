@@ -27,6 +27,7 @@ namespace ORB_SIFT{
         void Extract_SIFT(const cv::Mat &im);
         void CullingZeroLevel();
         void SIFTMatch();
+        void DrawMatches_sift();
         void UpdateLast(const cv::Mat& img);
         void FindHomography();
         //void Shift_Keys_From_ROI_To_Origin();
@@ -40,6 +41,8 @@ namespace ORB_SIFT{
         cv::Mat mDescriptors_Curr;
         cv::Mat mDescriptors_Last;
         vector<cv::DMatch> mMatches;
+
+        int mnFrameId;
 
     public:
         std::vector<cv::KeyPoint> mvKeysROI_0_Last;

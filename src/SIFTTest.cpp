@@ -4,13 +4,14 @@
 
 #include "../include/SIFTTest.h"
 using namespace std;
+using namespace cv;
 namespace ORB_SIFT{
     SIFTTest::SIFTTest(){
         sift_detector=cv::xfeatures2d::SiftFeatureDetector::create();
         sift_Descriptor=cv::xfeatures2d::SiftDescriptorExtractor::create();
         sift_matcher=cv::BFMatcher::create();
     }
-    SIFTTest::SIFTTest(std::string strSettingPath){
+    SIFTTest::SIFTTest(std::string strSettingPath):mnFrameId(-1){
         // Load camera parameters from settings file
         mbFirstImg=true;
         cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
@@ -94,6 +95,8 @@ namespace ORB_SIFT{
 
     void SIFTTest::GrabImage_sift(const cv::Mat &img, const double &timestamp) {
 
+        mnFrameId++;
+
         UpdateLast(img);
         if(mbFirstImg)
         {
@@ -142,15 +145,54 @@ namespace ORB_SIFT{
 
         cout<<mMatches.size()<<" sift matches."<<endl;
 
-        cv::Mat img_matches;
-        cv::drawMatches(mLastImg,Last_mvKeysROI,mCurrentImg,Curr_mvKeysROI,
-                        mMatches,img_matches,
-                        cv::Scalar::all(-1),cv::Scalar(0,0,255));
+        //cv::Mat img_matches;
+        //cv::drawMatches(mLastImg,Last_mvKeysROI,mCurrentImg,Curr_mvKeysROI,
+        //                mMatches,img_matches,
+        //                cv::Scalar::all(-1),cv::Scalar(0,0,255));
         //cv::drawMatches(mLastImg,mvKeysROI_0_Last,mCurrentImg,mvKeysROI_0_Curr,
         //                        mMatches,img_matches);
 
+        DrawMatches_sift();
 
-        cv::imshow("sift_matches",img_matches);
+        //cv::imshow("sift_matches",img_matches);
+        //cv::waitKey();
+    }
+    void SIFTTest::DrawMatches_sift()
+    {
+        if(mnFrameId==0)
+            return;
+
+        cv::Mat LastImg_RGB=mLastImg.clone();
+        cv::Mat CurrImg_RGB=mCurrentImg.clone();
+        cvtColor(LastImg_RGB,LastImg_RGB,CV_GRAY2RGB);
+        cvtColor(CurrImg_RGB,CurrImg_RGB,CV_GRAY2RGB);
+
+        cv::drawKeypoints(LastImg_RGB,Last_mvKeysROI,LastImg_RGB,cv::Scalar::all(-1),0);
+        DrawROI(LastImg_RGB);
+        cv::drawKeypoints(CurrImg_RGB,Curr_mvKeysROI,CurrImg_RGB,cv::Scalar::all(-1),0);
+        DrawROI(CurrImg_RGB);
+        //cout<<"Draw Matches"<<endl;
+
+        //int height=img1.rows;
+        //int width=img1.cols;
+        cv::Mat img_joint;
+        img_joint.create(2*mImg_HEIGHT,mImg_WIDTH,LastImg_RGB.type());
+        cv::Mat topImg=img_joint(Rect(0,0,mImg_WIDTH,mImg_HEIGHT));
+        LastImg_RGB.copyTo(topImg);
+        cv::Mat bottomImg=img_joint(Rect(0,mImg_HEIGHT,mImg_WIDTH,mImg_HEIGHT));
+        CurrImg_RGB.copyTo(bottomImg);
+
+        cv::Point pt1,pt2;
+
+        for(int i=0;i<(int)mMatches.size();i++)
+        {
+
+                pt1=cv::Point(Curr_mvKeysROI[mMatches[i].trainIdx].pt.x,Curr_mvKeysROI[mMatches[i].trainIdx].pt.y+mImg_HEIGHT);
+                pt2=Last_mvKeysROI[mMatches[i].queryIdx].pt;
+                cv::line(img_joint,pt1,pt2,cv::Scalar(255,0,0));
+        }
+
+        cv::imshow("Match_sift",img_joint);
         cv::waitKey();
     }
     void SIFTTest::FindHomography()
