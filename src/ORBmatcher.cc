@@ -71,13 +71,12 @@ bool ORBmatcher::CheckDistEpipolarLine(const cv::KeyPoint &kp1,const cv::KeyPoin
     return dsqr<3.84*pKF2->mvLevelSigma2[kp2.octave];
 }
 */
-int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<int> &vnMatches12, int windowSize)
+    int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<int> &vnMatches12, int windowSize)
     {
-    //TODO:怎么匹配？需要什么？
         int nmatches=0;
-        vnMatches12 = vector<int>(F1.mvKeysUn.size(),-1);   //F1有匹配的特征点索引
+        vnMatches12 = vector<int>(F1.mvKeysUn.size(),-1);
 
-        vector<int> rotHist[HISTO_LENGTH];  //
+        vector<int> rotHist[HISTO_LENGTH];
         for(int i=0;i<HISTO_LENGTH;i++)
             rotHist[i].reserve(500);
         const float factor = 1.0f/HISTO_LENGTH;
@@ -92,6 +91,7 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<int> &vnMat
             if(level1>0)
                 continue;
 
+            //vector<size_t> vIndices2 = F2.GetFeaturesInArea(vbPrevMatched[i1].x,vbPrevMatched[i1].y, windowSize,level1,level1);
             vector<size_t> vIndices2 = F2.GetFeaturesInArea(F1.mvKeysUn[i1].pt.x,F1.mvKeysUn[i1].pt.y, windowSize,level1,level1);
 
             if(vIndices2.empty())
@@ -180,14 +180,15 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<int> &vnMat
             }
 
         }
-/*
+
         //Update prev matched
-        for(size_t i1=0, iend1=vnMatches12.size(); i1<iend1; i1++)
-            if(vnMatches12[i1]>=0)
-                vbPrevMatched[i1]=F2.mvKeysUn[vnMatches12[i1]].pt;
-*/
+        //for(size_t i1=0, iend1=vnMatches12.size(); i1<iend1; i1++)
+            //if(vnMatches12[i1]>=0)
+                //vbPrevMatched[i1]=F2.mvKeysUn[vnMatches12[i1]].pt;
+
         return nmatches;
     }
+
 /*
 int ORBmatcher::SearchFromKeyPointsSet(vector<cv::KeyPoint> &KPs1,vector<cv::KeyPoint> &KPs2, vector<int> &vnMatches12, int windowSize)
 {
