@@ -76,6 +76,7 @@ namespace ORB_SIFT{
         cv::Mat mROI_Img;
 
         cv::Rect mROI;
+        double ROI_middle_col,ROI_lower_row;
 
         bool mbFirstImg;
     protected:

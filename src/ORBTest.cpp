@@ -98,6 +98,9 @@ namespace ORB_SIFT {
         cout << "- Initial Fast Threshold: " << fIniThFAST << endl;
         cout << "- Minimum Fast Threshold: " << fMinThFAST << endl;
 
+        ROI_middle_col=fSettings["ROI.middle_col"];
+        ROI_lower_row=fSettings["ROI.lower_row"];
+
         mpORBextractor = new ORBextractor(2*nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
 
     }
@@ -124,21 +127,21 @@ namespace ORB_SIFT {
 
         if(mbFirstImg)
         {
-            //Compute_HW_ROI();
+            Compute_HW_ROI();
             mbFirstImg=false;
         }
 
-        //WarpROI();
+        WarpROI();
 
         mLastFrame = Frame(mCurrentFrame);
-        //mCurrentFrame = Frame(mROI_Img, timestamp, mpORBextractor, mK, mDistCoef, mbf);
-        mCurrentFrame = Frame(mCurrentImg, timestamp, mpORBextractor, mK, mDistCoef, mbf);
-        //Last_mvKeysROI=Curr_mvKeysROI;
-        //CopyKeys();
+        mCurrentFrame = Frame(mROI_Img, timestamp, mpORBextractor, mK, mDistCoef, mbf);
+        //mCurrentFrame = Frame(mCurrentImg, timestamp, mpORBextractor, mK, mDistCoef, mbf);
+        Last_mvKeysROI=Curr_mvKeysROI;
+        CopyKeys();
         if(mCurrentFrame.mnId>0)
         {
             ORBMatch();
-            //DrawMatches();
+            DrawMatches();
             findHomography();
 
             if(mMatches>10)
@@ -172,8 +175,8 @@ namespace ORB_SIFT {
 
     void ORBTest::Compute_HW_ROI()
     {
-        const double middle_col=0.333333;
-        const double lower_row=0.5;
+        const double middle_col=ROI_middle_col;
+        const double lower_row=ROI_lower_row;
 
         mImg_WIDTH=mCurrentImg.cols;
         mImg_HEIGHT=mCurrentImg.rows;
@@ -307,7 +310,7 @@ namespace ORB_SIFT {
             return;
 
         ORBmatcher matcher(0.9,true);
-        mMatches=matcher.SearchForInitialization(mLastFrame,mCurrentFrame,vnMatches12,100);
+        mMatches=matcher.SearchForInitialization(mLastFrame,mCurrentFrame,vnMatches12,30);
         cout<<"Id: "<<mCurrentFrame.mnId<<" find "<<mMatches<<" matches."<<endl;
     }
     void ORBTest::findHomography()
@@ -333,7 +336,9 @@ namespace ORB_SIFT {
 
         mvMatches12.clear();
         mvMatches12.reserve(mCurrentFrame.mvKeysUn.size());
+
         mvbMatched1.resize(mLastFrame.mvKeysUn.size());
+
         for(size_t i=0, iend=vnMatches12.size();i<iend; i++)
         {
             if(vnMatches12[i]>=0)
@@ -738,8 +743,21 @@ namespace ORB_SIFT {
             float parallaxi;
             vector<cv::Point3f> vP3Di;
             vector<bool> vbTriangulatedi;
-            int nGood = CheckRT(vR[i],vt[i],mLastFrame.mvKeysUn,mCurrentFrame.mvKeysUn,mvMatches12,vbMatchesInliers,K,vP3Di, 4.0*mSigma2, vbTriangulatedi, parallaxi);
+            //总是有其中两个解得到相同数量的nGood
+            //增加约束Both frames,F* and F must be in the same side of the object plane.
+            //1+n.t()*R.t()*t>0
+            //cv::Mat nt=vn[i].t();
+            cv::Mat Rt=vR[i].t();
+            cv::Mat t=vt[i];
+            double d=vn[i].dot(Rt*t);
+            //double d=vn[i].t()*vR[i].t()*vt[i]+1;
+            if(d<=0.000001)
+                continue;
 
+            int nGood = CheckRT(vR[i],vt[i],mLastFrame.mvKeysUn,mCurrentFrame.mvKeysUn,mvMatches12,vbMatchesInliers,K,vP3Di, 4.0*mSigma2, vbTriangulatedi, parallaxi);
+            cout<<"R"<<i<<":"<<endl<<cv::format(vR[i],cv::Formatter::FMT_C)<<endl;
+            cout<<"t"<<i<<":"<<endl<<cv::format(vt[i],cv::Formatter::FMT_C)<<endl;
+            cout<<"nGood "<<nGood<<"v.s."<<" bestGood"<<bestGood<<endl;
             if(nGood>bestGood)
             {
                 secondBestGood = bestGood;
@@ -764,6 +782,7 @@ namespace ORB_SIFT {
         if(false==(bestParallax>=minParallax))
         {
             cout<<"false==(bestParallax>=minParallax)"<<endl;
+            cout<<"bestParallax: "<<bestParallax<<endl;
         }
         if(false==(bestGood>minTriangulated))
         {
@@ -773,7 +792,8 @@ namespace ORB_SIFT {
         {
             cout<<"false==(bestGood>0.9*N)"<<endl;
         }
-            if(secondBestGood<0.75*bestGood && bestParallax>=minParallax && bestGood>minTriangulated && bestGood>0.9*N)
+        //if(secondBestGood<0.75*bestGood && bestParallax>=minParallax && bestGood>minTriangulated && bestGood>0.9*N)
+        if( bestParallax>=minParallax && bestGood>minTriangulated && bestGood>0.9*N)
         {
             vR[bestSolutionIdx].copyTo(R21);
             vt[bestSolutionIdx].copyTo(t21);
@@ -875,6 +895,10 @@ namespace ORB_SIFT {
 
             if(squareError2>th2)
                 continue;
+
+            //总是有其中两个解得到相同数量的nGood
+            //增加约束Both frames,F* and F must be in the same side of the object plane.
+            //1+n.t()*R.t()*t>0
 
             vCosParallax.push_back(cosParallax);
             vP3D[vMatches12[i].first] = cv::Point3f(p3dC1.at<float>(0),p3dC1.at<float>(1),p3dC1.at<float>(2));
