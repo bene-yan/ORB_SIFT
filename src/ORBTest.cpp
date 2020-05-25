@@ -19,6 +19,14 @@ using namespace std;
 using namespace cv;
 namespace ORB_SIFT {
 
+    /*
+    //vector<cv::Mat> vmatGT;
+    cv::Mat GT00_1(3,4,CV_32F);
+    GT00_1<< 9.999978e-01  << 5.272628e-04 << -2.066935e-03 << -4.690294e-02
+          << -5.296506e-04 << 9.999992e-01 << -1.154865e-03 << -2.839928e-02
+          << 2.066324e-03  << 1.155958e-03 << 9.999971e-01  << 8.586941e-01;
+          */
+
     ORBTest::ORBTest(){};
 
     ORBTest::ORBTest(std::string strSettingPath):
@@ -248,6 +256,7 @@ namespace ORB_SIFT {
         ///draw KeyPoints
         //cout<<"draw KeyPoints"<<endl;
         const float r = 5;
+        //cv::Mat P=mk*GT00_1;
         //cv::Point origin=roi.tl();
         for(int ni=0;ni<nKeys;ni++)
         {
@@ -256,12 +265,24 @@ namespace ORB_SIFT {
             pt1.y=Curr_mvKeysROI[ni].pt.y-r;//origin.y+
             pt2.x=Curr_mvKeysROI[ni].pt.x+r;//origin.x+
             pt2.y=Curr_mvKeysROI[ni].pt.y+r;//origin.y+
+            /*
+            cv::Point2f pt3,pt4;
+            cv::Point2f gt_key=P*;
+            pt3.x=Curr_mvKeysROI[ni].pt.x-r;
+            pt3.y=Curr_mvKeysROI[ni].pt.y-r;
+            pt4.x=Curr_mvKeysROI[ni].pt.x+r;
+            pt4.y=Curr_mvKeysROI[ni].pt.y+r;
+            */
+
             if(mCurrentFrame.mnId==0||vnMatches12.size()<1)
             {
                 cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,255,0));
                 cv::circle(LabelROI_im,Curr_mvKeysROI[ni].pt,
                         //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
                            2,cv::Scalar(0,255,0),-1);
+
+
+
             }
             //TODO debug
             else
@@ -271,13 +292,17 @@ namespace ORB_SIFT {
                     cv::circle(LabelROI_im,Curr_mvKeysROI[ni].pt,
                             //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
                                2,cv::Scalar(0,255,0),-1);
+
                 }
+
+
+                /*
                 else{
                     cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,0,255));
                     cv::circle(LabelROI_im,Curr_mvKeysROI[ni].pt,
                             //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
                                2,cv::Scalar(0,0,255),-1);
-                }
+                }*/
 
             }
 
@@ -313,7 +338,7 @@ namespace ORB_SIFT {
         mMatches=matcher.SearchForInitialization(mLastFrame,mCurrentFrame,vnMatches12,30);
         cout<<"Id: "<<mCurrentFrame.mnId<<" find "<<mMatches<<" matches."<<endl;
     }
-    void ORBTest::findHomography()
+
     {
         vector<cv::Point2f> KeyPoints1(vnMatches12.size()); //上一帧中有对象的特征点
         vector<cv::Point2f> KeyPoints2(vnMatches12.size()); //当前帧中有对象的特征点
@@ -385,6 +410,7 @@ namespace ORB_SIFT {
             }
         }
     }
+    //TODO 如何在大量误匹配数据中找到正确的Homography
     void ORBTest::findHomography(vector<bool> &vbMatchesInliers, float &score, cv::Mat &H21)
     {
         GenerateSets();
@@ -426,6 +452,7 @@ namespace ORB_SIFT {
             H21i = T2inv*Hn*T1;
             H12i = H21i.inv();
 
+            //这里采用的方法是通过H矩阵计算匹配点的对称重投影误差
             currentScore = CheckHomography(H21i, H12i, vbCurrentInliers, mSigma);
 
             if(currentScore>score)
@@ -965,6 +992,8 @@ namespace ORB_SIFT {
 
     }
 
+
+    }
 
 
 }
