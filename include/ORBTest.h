@@ -14,6 +14,7 @@
 #include "../include/ORBextractor.h"
 #include "../include/Frame.h"
 #include "../include/ORBmatcher.h"
+#include "../include/HomoDecomp.h"
 
 namespace ORB_SIFT{
     class ORBTest{
@@ -38,17 +39,6 @@ namespace ORB_SIFT{
         void ORBMatch() ;
         void findHomography();
         //-----
-        void GenerateSets();
-        void findHomography(vector<bool> &vbMatchesInliers, float &score, cv::Mat &H21);
-        cv::Mat ComputeH21(const vector<cv::Point2f> &vP1, const vector<cv::Point2f> &vP2);
-        float CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vector<bool> &vbMatchesInliers, float sigma);
-        void Normalize(const vector<cv::KeyPoint> &vKeys, vector<cv::Point2f> &vNormalizedPoints, cv::Mat &T);
-        bool ReconstructH(vector<bool> &vbMatchesInliers, cv::Mat &H21, cv::Mat &K,
-                                   cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated);
-        int CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::KeyPoint> &vKeys1, const vector<cv::KeyPoint> &vKeys2,
-                             const vector<Match> &vMatches12, vector<bool> &vbMatchesInliers,
-                             const cv::Mat &K, vector<cv::Point3f> &vP3D, float th2, vector<bool> &vbGood, float &parallax);
-        void Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, const cv::Mat &P1, const cv::Mat &P2, cv::Mat &x3D);
 
         void CopyKeys() ;
     public:
