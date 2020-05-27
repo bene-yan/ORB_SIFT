@@ -37,7 +37,6 @@ namespace ORB_SIFT{
         void DrawROI(cv::Mat& image);
 
         void ORBMatch() ;
-        void findHomography();
         //-----
 
         void CopyKeys() ;
@@ -58,8 +57,6 @@ namespace ORB_SIFT{
         Frame mLastFrame;
         vector<int> vnMatches12;
         int mMatches;
-        vector<Match> mvMatches12;  //Match=pair
-        vector<bool> mvbMatched1;
 
         cv::Mat mCurrentImg;
         cv::Mat mLastImg;
@@ -73,12 +70,6 @@ namespace ORB_SIFT{
         cv::Point mROIOrigin;    //兴趣区域的原点在原图中坐标
         int mImg_HEIGHT;
         int mImg_WIDTH;
-
-        int mMaxIterations;
-        // Ransac sets
-        vector<vector<size_t> > mvSets;
-        // Standard Deviation and Variance
-        float mSigma, mSigma2;
 
 
     };

@@ -41,7 +41,7 @@ namespace ORB_SIFT {
 
         void Triangulate(const cv::Point &pt1, const cv::Point &pt2, const cv::Mat &P1, const cv::Mat &P2, cv::Mat &x3D);
 
-        bool isCoplanar(vector <cv::Mat> &Points3D, cv::Mat normal);
+        bool isCoplanar(vector <cv::Mat> &Points3D, cv::Mat &normal);
 
     public:
         //Data From Test

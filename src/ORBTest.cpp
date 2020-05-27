@@ -29,9 +29,7 @@ namespace ORB_SIFT {
 
     ORBTest::ORBTest(){};
 
-    ORBTest::ORBTest(std::string strSettingPath):
-    mbFirstImg(true),mMaxIterations(200),mMatches(0),mSigma(1.0) {
-        mSigma2=(mSigma*mSigma);
+    ORBTest::ORBTest(std::string strSettingPath):mbFirstImg(true),mMatches(0){
         // Load camera parameters from settings file
 
         cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
@@ -109,7 +107,7 @@ namespace ORB_SIFT {
         ROI_middle_col=fSettings["ROI.middle_col"];
         ROI_lower_row=fSettings["ROI.lower_row"];
 
-        mpORBextractor = new ORBextractor(2*nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+        mpORBextractor = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
 
     }
 
@@ -131,61 +129,49 @@ namespace ORB_SIFT {
                 cvtColor(mCurrentImg,mCurrentImg,CV_BGRA2GRAY);
         }
 
-
-
+        //计算ROI区域
         if(mbFirstImg)
         {
             Compute_HW_ROI();
             mbFirstImg=false;
+
+            cv::Mat t0(3,1,CV_32F);
+            t0.at<double>(0)=-0.04690294;
+            t0.at<double>(1)=-0.02839928;
+            t0.at<double>(2)=0.8586941;
+
+            //t0<<-0.04690294<<-0.02839928<<0.8586941;
+            t0=t0/cv::norm(t0);
+            cout<<"t0:"<<cv::format(t0,cv::Formatter::FMT_C)<<endl;
         }
 
+        //提取当前图像的ROI
         WarpROI();
 
+        //对图像进行特征提取、校正等操作
         mLastFrame = Frame(mCurrentFrame);
         mCurrentFrame = Frame(mROI_Img, timestamp, mpORBextractor, mK, mDistCoef, mbf);
         //mCurrentFrame = Frame(mCurrentImg, timestamp, mpORBextractor, mK, mDistCoef, mbf);
         Last_mvKeysROI=Curr_mvKeysROI;
+        //复制用于展示的特征点
         CopyKeys();
+        //从第二张图开始估计运动
         if(mCurrentFrame.mnId>0)
         {
             ORBMatch();
-            DrawMatches();
-            //findHomography();
+            //DrawMatches();
 
-            HomoDecomp H_Decompor(mK,mLastFrame,mCurrentFrame,vnMatches12,100);
+
+            HomoDecomp H_Decompor(mK,mLastFrame,mCurrentFrame,vnMatches12,20);
             cv::Mat R21,t21;
-            float score;
+            float score=0.0;
             H_Decompor.DecompHomography(score,R21,t21);
+            cout<<"Score: "<<score<<endl;
             cout<<"R21:"<<endl<<cv::format(R21,cv::Formatter::FMT_C)<<endl;
             cout<<"t21:"<<endl<<cv::format(t21,cv::Formatter::FMT_C)<<endl;
-            /*
-            if(mMatches>10)
-            {
-                vector<bool> vbMatches;
-                cv::Mat H_orb;
-                float score=0.0;
-                findHomography(vbMatches,score,H_orb);
-                cout<<"Score: "<<score<<endl;
-                cout<<"H_orb:"<<endl<<cv::format(H_orb,cv::Formatter::FMT_C)<<endl;
-                cv::Mat R21,t21;
-                vector<cv::Point3f> vP3D;
-                vector<bool> vbTriangulated;
-                if(ReconstructH(vbMatches,H_orb,mK,R21,t21,vP3D,vbTriangulated,1.0,50))
-                {
-                    cout<<"R21:"<<endl<<cv::format(R21,cv::Formatter::FMT_C)<<endl;
-                    cout<<"t21:"<<endl<<cv::format(t21,cv::Formatter::FMT_C)<<endl;
-                }
-                else
-                    cout<<"fail to ReconstructH."<<endl;
-
-
-            }*/
-
 
         }
         mLastImg=mCurrentImg;
-
-
     }
 
     void ORBTest::Compute_HW_ROI()
@@ -345,28 +331,6 @@ namespace ORB_SIFT {
         mMatches=matcher.SearchForInitialization(mLastFrame,mCurrentFrame,vnMatches12,30);
         cout<<"Id: "<<mCurrentFrame.mnId<<" find "<<mMatches<<" matches."<<endl;
     }
-    void ORBTest::findHomography()
-    {
-        vector<cv::Point2f> KeyPoints1(vnMatches12.size()); //上一帧中有对象的特征点
-        vector<cv::Point2f> KeyPoints2(vnMatches12.size()); //当前帧中有对象的特征点
-
-        for(size_t i=0,iend=vnMatches12.size();i<iend;i++)
-        {
-            if(vnMatches12[i]>0)
-            {
-
-                KeyPoints1.push_back(mCurrentFrame.mvKeysUn[vnMatches12[i]].pt);
-                KeyPoints2.push_back(mLastFrame.mvKeysUn[i].pt);//是这里发生了访问越界
-            }
-
-        }
-        cv::Mat H_cv=cv::findHomography(KeyPoints2,KeyPoints1,cv::RANSAC);
-        cout<<"H_cv:"<<cv::format(H_cv,cv::Formatter::FMT_C)<<";"<<endl;
-    }
-
-
-
-
 
     void ORBTest::CopyKeys()
     {

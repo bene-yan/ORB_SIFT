@@ -81,7 +81,7 @@ namespace ORB_SIFT {
         cv::Mat T2inv = T2.inv();
 
         // Best Results variables
-        score = 0.0;
+        //score = 0.0;
         //vbMatchesInliers = vector<bool>(N, false);//通过对称重投影误差判断某个匹配是否为内点
 
         // Iteration variables
@@ -117,8 +117,8 @@ namespace ORB_SIFT {
             cv::Mat n1i;//(3,1,CV_32F);
 
             //TODO TO Debug
-            ReconstructH(H21i, mK, R21i, t21i, n1i);//TODO 需要修改
-            continue;
+            if(false==ReconstructH(H21i, mK, R21i, t21i, n1i))//TODO 需要修改
+                continue;   //未能恢复位姿
 
             //步骤四：三角化这个8个点，判断他们是否共面且平面法向量是否满足要求
             // Camera 1 Projection Matrix K[I|0]
@@ -143,9 +143,15 @@ namespace ORB_SIFT {
                 vPn3dC1.push_back(p3dC1);
             }
 
+
             cv::Mat normal = cv::Mat::zeros(3, 1, CV_32F);
             if (true == isCoplanar(vPn3dC1, normal))
-                currentScore = normal.dot(n1i);
+            {
+                currentScore = std::abs(normal.dot(n1i)); //可能为负，最大为1
+                cout<<"eight point for H is coplanar,CurrentScore: "<<currentScore<<endl;
+            }
+            else
+                cout<<"eight point for H is non-coplanar"<<endl;
 
 
             if (currentScore > score) {
@@ -303,7 +309,7 @@ namespace ORB_SIFT {
 
             cv::Mat t = U * tp;
             vt.push_back(t / cv::norm(t));
-
+            //vt.push_back(t); //看看不单位化怎么样
             cv::Mat np(3, 1, CV_32F);
             np.at<float>(0) = x1[i];
             np.at<float>(1) = 0;
@@ -340,6 +346,7 @@ namespace ORB_SIFT {
 
             cv::Mat t = U * tp;
             vt.push_back(t / cv::norm(t));
+            //vt.push_back(t);
 
             cv::Mat np(3, 1, CV_32F);
             np.at<float>(0) = x1[i];
@@ -378,10 +385,11 @@ namespace ORB_SIFT {
             cv::Mat t = vt[i];
             double d = vn[i].dot(Rt * t);
             //double d=vn[i].t()*vR[i].t()*vt[i]+1;
+            cout<<"d"<<i<<": "<<d<<endl;
             if (d <= 0.000001)
                 continue;
 
-            cout<<"d"<<i<<": "<<d<<endl;
+
 
             //条件二：(剩两组解)
             //For all the reference points being visible, they must be in front of the camera.
@@ -396,10 +404,11 @@ namespace ORB_SIFT {
             //TODO 需要第三个条件选出最终解
 
             //能活到这里的解只剩下两个。
+            /*
             cout << "R" << i << ":" << endl << cv::format(vR[i], cv::Formatter::FMT_C) << endl;
             cout << "t" << i << ":" << endl << cv::format(vt[i], cv::Formatter::FMT_C) << endl;
             cout << "nGood " << nGood << "v.s." << " bestGood" << bestGood << endl;
-
+            */
 
             if (nGood > bestGood) {
                 //secondBestGood = bestGood;
@@ -419,14 +428,14 @@ namespace ORB_SIFT {
 
         //if(secondBestGood<0.75*bestGood && bestParallax>=minParallax && bestGood>minTriangulated && bestGood>0.9*N)
         //if(bestGood>0.9*N)
+        if(bestSolutionIdx>=0)
         {
-            //TODO bug here
-            //bestSolutionIdx could = -1!
-            cout<<"bestSolutionIdx:"<<bestSolutionIdx<<endl;
+            //TO-DO bug here
+            //Debug: bestSolutionIdx could = -1!
 
-            //vR[bestSolutionIdx].copyTo(R21);
-            //vt[bestSolutionIdx].copyTo(t21);
-           // vn[bestSolutionIdx].copyTo(n1);
+            vR[bestSolutionIdx].copyTo(R21);
+            vt[bestSolutionIdx].copyTo(t21);
+            vn[bestSolutionIdx].copyTo(n1);
             //vP3D = bestP3D;
             //vbTriangulated = bestTriangulated;
 
@@ -604,13 +613,14 @@ namespace ORB_SIFT {
     }
 
     //TODO 考虑拟合平面而不是严格共面
-    bool HomoDecomp::isCoplanar(vector <cv::Mat> &Points3D, cv::Mat normal) {
+    bool HomoDecomp::isCoplanar(vector <cv::Mat> &Points3D, cv::Mat &normal) {
         cv::Mat P1 = Points3D[0];
         cv::Mat P2 = Points3D[1];
         cv::Mat P3 = Points3D[2];
         cv::Mat L12 = P2 - P1;
         cv::Mat L13 = P3 - P1;
         normal = L12.cross(L13);
+        normal = normal/cv::norm(normal);
 
         cv::Mat Pi(3,1,CV_32F);
         for (size_t i = 3, N = Points3D.size(); i < N; Pi = Points3D[i++]) {
