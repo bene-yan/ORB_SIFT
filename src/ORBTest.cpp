@@ -159,7 +159,7 @@ namespace ORB_SIFT {
         if(mCurrentFrame.mnId>0)
         {
             ORBMatch();
-            //DrawMatches();
+            DrawMatches();
 
 
             HomoDecomp H_Decompor(mK,mLastFrame,mCurrentFrame,vnMatches12,20);

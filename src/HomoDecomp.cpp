@@ -117,7 +117,7 @@ namespace ORB_SIFT {
             cv::Mat n1i;//(3,1,CV_32F);
 
             //TODO TO Debug
-            if(false==ReconstructH(H21i, mK, R21i, t21i, n1i))//TODO 需要修改
+            if(false==ReconstructH(H21i, mK, R21i, t21i, n1i,vPn1i))//TODO 需要修改
                 continue;   //未能恢复位姿
 
             //步骤四：三角化这个8个点，判断他们是否共面且平面法向量是否满足要求
@@ -147,7 +147,7 @@ namespace ORB_SIFT {
             cv::Mat normal = cv::Mat::zeros(3, 1, CV_32F);
             if (true == isCoplanar(vPn3dC1, normal))
             {
-                currentScore = std::abs(normal.dot(n1i)); //可能为负，最大为1
+                currentScore = normal.dot(n1i); //可能为负，最大为1
                 cout<<"eight point for H is coplanar,CurrentScore: "<<currentScore<<endl;
             }
             else
@@ -250,7 +250,7 @@ namespace ORB_SIFT {
         T.at<float>(1, 2) = -meanY * sY;
     }
 
-    bool HomoDecomp::ReconstructH(cv::Mat &H21, cv::Mat &K, cv::Mat &R21, cv::Mat &t21, cv::Mat &n1) {
+    bool HomoDecomp::ReconstructH(cv::Mat &H21, cv::Mat &K, cv::Mat &R21, cv::Mat &t21, cv::Mat &n1,vector <cv::Point2f> vPn1i) {
 
         // We recover 8 motion hypotheses using the method of Faugeras et al.
         // Motion and structure from motion in a piecewise planar environment.
@@ -275,23 +275,27 @@ namespace ORB_SIFT {
         }
 
         vector <cv::Mat> vR, vt, vn;
+        vector <float> vd;
         vR.reserve(8);
         vt.reserve(8);
         vn.reserve(8);
+        vd.reserve(8);
 
         //n'=[x1 0 x3] 4 posibilities e1=e3=1, e1=1 e3=-1, e1=-1 e3=1, e1=e3=-1
         float aux1 = sqrt((d1 * d1 - d2 * d2) / (d1 * d1 - d3 * d3));
         float aux3 = sqrt((d2 * d2 - d3 * d3) / (d1 * d1 - d3 * d3));
-        float x1[] = {aux1, aux1, -aux1, -aux1};
+        float x1[] = {aux1, aux1, -aux1, -aux1};    //x1,x3四种情况
         float x3[] = {aux3, -aux3, aux3, -aux3};
 
-        //case d'=d2
+        //case d'=d2    //d'两种情况
         float aux_stheta = sqrt((d1 * d1 - d2 * d2) * (d2 * d2 - d3 * d3)) / ((d1 + d3) * d2);
 
         float ctheta = (d2 * d2 + d1 * d3) / ((d1 + d3) * d2);
         float stheta[] = {aux_stheta, -aux_stheta, -aux_stheta, aux_stheta};
 
         for (int i = 0; i < 4; i++) {
+            vd.push_back(s*d2);
+
             cv::Mat Rp = cv::Mat::eye(3, 3, CV_32F);
             Rp.at<float>(0, 0) = ctheta;
             Rp.at<float>(0, 2) = -stheta[i];
@@ -308,16 +312,16 @@ namespace ORB_SIFT {
             tp *= d1 - d3;
 
             cv::Mat t = U * tp;
-            vt.push_back(t / cv::norm(t));
-            //vt.push_back(t); //看看不单位化怎么样
+            //vt.push_back(t / cv::norm(t));//逻辑上，由于目的不同，这里不应该单位化，否则不知道真实尺度
+            vt.push_back(t); //看看不单位化怎么样
             cv::Mat np(3, 1, CV_32F);
             np.at<float>(0) = x1[i];
             np.at<float>(1) = 0;
             np.at<float>(2) = x3[i];
 
             cv::Mat n = V * np;
-            if (n.at<float>(2) < 0)
-                n = -n;
+            //if (n.at<float>(2) < 0)     //法向量做了处理，全都指向前方
+                //n = -n;
             vn.push_back(n);
         }
 
@@ -328,6 +332,8 @@ namespace ORB_SIFT {
         float sphi[] = {aux_sphi, -aux_sphi, -aux_sphi, aux_sphi};
 
         for (int i = 0; i < 4; i++) {
+            vd.push_back(-s*d2);
+
             cv::Mat Rp = cv::Mat::eye(3, 3, CV_32F);
             Rp.at<float>(0, 0) = cphi;
             Rp.at<float>(0, 2) = sphi[i];
@@ -345,8 +351,8 @@ namespace ORB_SIFT {
             tp *= d1 + d3;
 
             cv::Mat t = U * tp;
-            vt.push_back(t / cv::norm(t));
-            //vt.push_back(t);
+            //vt.push_back(t / cv::norm(t));
+            vt.push_back(t);
 
             cv::Mat np(3, 1, CV_32F);
             np.at<float>(0) = x1[i];
@@ -354,8 +360,8 @@ namespace ORB_SIFT {
             np.at<float>(2) = x3[i];
 
             cv::Mat n = V * np;
-            if (n.at<float>(2) < 0)
-                n = -n;
+            //if (n.at<float>(2) < 0)
+                //n = -n;
             vn.push_back(n);
         }
 
@@ -372,30 +378,36 @@ namespace ORB_SIFT {
         // We reconstruct all hypotheses and check in terms of triangulated points and parallax
         //从8个解中剔除错误解
         for (size_t i = 0; i < 8; i++) {
-            cout << "----Solution[" << i << "]----" << endl;
+            //cout << "----Solution[" << i << "]----" << endl;
             //float parallaxi;
             //vector <cv::Point3f> vP3Di;
             //vector<bool> vbTriangulatedi;
-
+/*
             //条件一：(剩4组解)
             //Both frames,F* and F must be in the same side of the object plane.
             //1+n.t()*R.t()*t>0
             //cv::Mat nt=vn[i].t();
             cv::Mat Rt = vR[i].t();
-            cv::Mat t = vt[i];
-            double d = vn[i].dot(Rt * t);
+            cv::Mat t = vt[i]/vd[i];
+            double d = vn[i].dot(Rt * t)+1.0;
             //double d=vn[i].t()*vR[i].t()*vt[i]+1;
             cout<<"d"<<i<<": "<<d<<endl;
             if (d <= 0.000001)
                 continue;
 
+*/
+
+            if(false==CheckVisibility(H21,vPn1i,vd[i]))
+                continue;
 
 
             //条件二：(剩两组解)
             //For all the reference points being visible, they must be in front of the camera.
             //m*.t()n*>0;==//m.t()(Rn)>0;
-            int nGood = CheckRT(mPairMatch12, vR[i], vn[i]);
-            cout << "nGood[" << i << "]:" << nGood << endl;
+            //条件二From Faguras
+            //ntm1/d>0
+            int nGood = CheckRT(mPairMatch12, vR[i], vn[i],vd[i]);
+            //cout << "nGood[" << i << "]:" << nGood <<"/"<<mPairMatch12.size()<< endl;
             //int nGood = CheckRT(vR[i],vt[i],mLastFrame.mvKeysUn,mCurrentFrame.mvKeysUn,mPairMatch12,vbMatchesInliers,K,vP3Di, 4.0*mSigma2, vbTriangulatedi, parallaxi);
 
             if (nGood < 0.5 * mPairMatch12.size())
@@ -403,12 +415,28 @@ namespace ORB_SIFT {
 
             //TODO 需要第三个条件选出最终解
 
+
             //能活到这里的解只剩下两个。
-            /*
-            cout << "R" << i << ":" << endl << cv::format(vR[i], cv::Formatter::FMT_C) << endl;
-            cout << "t" << i << ":" << endl << cv::format(vt[i], cv::Formatter::FMT_C) << endl;
-            cout << "nGood " << nGood << "v.s." << " bestGood" << bestGood << endl;
-            */
+            /
+            cv::Mat t_gt;
+            t_gt=vt[i]/vd[i]*1.65;
+            cout << "t_gt" << i << ":" << endl << cv::format(t_gt, cv::Formatter::FMT_C) << endl;
+
+            cv::Mat t0(3,1,CV_32F);
+            t0.at<float>(0)=-0.04690294;
+            t0.at<float>(1)=-0.02839928;
+            t0.at<float>(2)=0.8586941;
+
+            if(cv::norm(t_gt-t0)<0.05||cv::norm(t_gt+t0)<0.05)
+            {
+                cout << "R" << i << ":" << endl << cv::format(vR[i], cv::Formatter::FMT_C) << endl;
+                cout << "t" << i << ":" << endl << cv::format(vt[i], cv::Formatter::FMT_C) << endl;
+            }
+
+            //cout << "R" << i << ":" << endl << cv::format(vR[i], cv::Formatter::FMT_C) << endl;
+            //cout << "t" << i << ":" << endl << cv::format(vt[i], cv::Formatter::FMT_C) << endl;
+            //cout << "nGood " << nGood << "v.s." << " bestGood" << bestGood << endl;
+
 
             if (nGood > bestGood) {
                 //secondBestGood = bestGood;
@@ -557,12 +585,13 @@ namespace ORB_SIFT {
         return nGood;
     }
 */
-    int HomoDecomp::CheckRT(vector <Match> vMatches12, cv::Mat R, cv::Mat N) {
+    int HomoDecomp::CheckRT(vector <Match> vMatches12, cv::Mat R, cv::Mat N,float d) {
         int nGood = 0;
         for (size_t i = 0, iend = vMatches12.size(); i < iend; i++) {
             //条件二：
             //For all the reference points being visible, they must be in front of the camera.
             //m*.t()n*>0;==m.t()(Rn)>0;
+
             cv::Point pt1 = mLastFrame.mvKeysUn[mPairMatch12[i].first].pt;
             cv::Point pt2 = mCurrentFrame.mvKeysUn[mPairMatch12[i].second].pt;
             cv::Mat m(3, 1, CV_32F);
@@ -575,11 +604,34 @@ namespace ORB_SIFT {
             m_s.at<float>(1) = pt2.y;
             m_s.at<float>(2) = 1.0;
 
-            if (m.dot(R * N) > 0.000001 && m_s.dot(N) > 0.000001)
+            //if (m.dot(R * N) > 0.000001 && m_s.dot(N) > 0.000001)
+                //nGood++;
+
+            //条件二From Faguras
+            //ntm1/d>0
+            if(N.dot(m)/d>0.000001)
                 nGood++;
         }
 
         return nGood;
+    }
+
+    bool HomoDecomp::CheckVisibility(cv::Mat &H21,vector<cv::Point2f> vPn1i,float di){
+        float a31=H21.at<float>(2,0);
+        float a32=H21.at<float>(2,1);
+        float a33=H21.at<float>(2,2);
+        for(size_t i=0,iend=vPn1i.size();i<iend;i++)
+        {
+            // Z2    a31*x1+a32*y1+a33
+            // -- ==------------------- >0
+            // Z1           d
+            float Z2divZ1=(a31*vPn1i[i].x+a32*vPn1i[i].y+a33)/di;
+            if(Z2divZ1<0)
+                return false;
+        }
+
+        return true;
+
     }
 
     void HomoDecomp::Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, const cv::Mat &P1, const cv::Mat &P2,
@@ -614,16 +666,28 @@ namespace ORB_SIFT {
 
     //TODO 考虑拟合平面而不是严格共面
     bool HomoDecomp::isCoplanar(vector <cv::Mat> &Points3D, cv::Mat &normal) {
+
         cv::Mat P1 = Points3D[0];
         cv::Mat P2 = Points3D[1];
-        cv::Mat P3 = Points3D[2];
         cv::Mat L12 = P2 - P1;
+        cv::Mat P3;
+        for(size_t j=2,N = Points3D.size();j<N;j++)
+        {
+            P3=Points3D[j];
+            if(L12.dot(P3)>0||L12.dot(P3)<0)//如果不共线
+                break;
+        }
+        if(L12.dot(P3)==0)//搜索结束依然共线
+            return false;
+
         cv::Mat L13 = P3 - P1;
-        normal = L12.cross(L13);
+        normal = L12.cross(L13);    //共线重新选点
         normal = normal/cv::norm(normal);
+        if(normal.at<float>(2)<0)
+            normal=-normal;
 
         cv::Mat Pi(3,1,CV_32F);
-        for (size_t i = 3, N = Points3D.size(); i < N; Pi = Points3D[i++]) {
+        for (size_t i = 2, N = Points3D.size(); i < N; Pi = Points3D[i++]) {
             if (Pi.dot(normal) > 0.001) {
                 normal = cv::Mat::zeros(3, 1, CV_32F);
                 return false;
