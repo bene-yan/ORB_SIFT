@@ -1,0 +1,2 @@
+cd /build
+./ORB_SIFT ../SettingFiles/KITTI00-02.yaml ../sequences/00

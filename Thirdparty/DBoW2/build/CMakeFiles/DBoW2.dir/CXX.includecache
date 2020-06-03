@@ -1,0 +1,46 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/bene/slam/project/ORB_SIFT/ThirdParty/DBoW2/DUtils/Random.cpp
+Random.h
+/home/bene/slam/project/ORB_SIFT/ThirdParty/DBoW2/DUtils/Random.h
+Timestamp.h
+/home/bene/slam/project/ORB_SIFT/ThirdParty/DBoW2/DUtils/Timestamp.h
+cstdlib
+-
+
+/home/bene/slam/project/ORB_SIFT/ThirdParty/DBoW2/DUtils/Random.h
+cstdlib
+-
+vector
+-
+
+/home/bene/slam/project/ORB_SIFT/ThirdParty/DBoW2/DUtils/Timestamp.cpp
+cstdio
+-
+cstdlib
+-
+ctime
+-
+cmath
+-
+sstream
+-
+iomanip
+-
+sys/timeb.h
+-
+sys/time.h
+-
+Timestamp.h
+/home/bene/slam/project/ORB_SIFT/ThirdParty/DBoW2/DUtils/Timestamp.h
+
+/home/bene/slam/project/ORB_SIFT/ThirdParty/DBoW2/DUtils/Timestamp.h
+iostream
+-
+

@@ -14,6 +14,7 @@
 
 #include "ORBTest.h"
 #include "../Thirdparty/DBoW2/DUtils/Random.h"
+#include "Initializer.h"
 
 using namespace std;
 using namespace cv;
@@ -162,10 +163,20 @@ namespace ORB_SIFT {
             DrawMatches();
 
 
-            HomoDecomp H_Decompor(mK,mLastFrame,mCurrentFrame,vnMatches12,20);
+            //HomoDecomp H_Decompor(mK,mLastFrame,mCurrentFrame,vnMatches12,20);
+            //H_Decompor.DecompHomography(score,R21,t21);
             cv::Mat R21,t21;
+            vector<bool> vbTriangulated;
+            vector<cv::Point3f> vIniP3D;
             float score=0.0;
-            H_Decompor.DecompHomography(score,R21,t21);
+            if(mMatches>10)
+            {
+
+                Initializer OrbHdecomposer(mLastFrame,1.0,200);
+                OrbHdecomposer.Initialize(mCurrentFrame,vnMatches12,R21,t21,vIniP3D,vbTriangulated);
+
+            }
+
             cout<<"Score: "<<score<<endl;
             cout<<"R21:"<<endl<<cv::format(R21,cv::Formatter::FMT_C)<<endl;
             cout<<"t21:"<<endl<<cv::format(t21,cv::Formatter::FMT_C)<<endl;

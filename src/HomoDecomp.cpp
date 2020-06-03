@@ -417,7 +417,6 @@ namespace ORB_SIFT {
 
 
             //能活到这里的解只剩下两个。
-            /
             cv::Mat t_gt;
             t_gt=vt[i]/vd[i]*1.65;
             cout << "t_gt" << i << ":" << endl << cv::format(t_gt, cv::Formatter::FMT_C) << endl;
