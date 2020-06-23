@@ -9,6 +9,10 @@
 #include<opencv2/features2d/features2d.hpp>
 #include <opencv/cv.h>
 
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+
 #include <vector>
 
 #include "../include/ORBextractor.h"
@@ -17,6 +21,9 @@
 #include "../include/HomoDecomp.h"
 
 namespace ORB_SIFT{
+
+typedef pcl::PointXYZI PointType;
+
     class ORBTest{
         typedef pair<int,int> Match;
     public:
@@ -24,7 +31,8 @@ namespace ORB_SIFT{
         ORBTest(std::string strSettingPath);
         ~ORBTest(){delete mpORBextractor;}
 
-        void GrabImage(const cv::Mat &img, const double &timestamp);
+        void GrabImage(const cv::Mat &img, const double &timestamp
+                ,pcl::PointCloud<PointType>::Ptr &orgin_cloud);
 
         void SaveResult(const string& SaveFileName);
     protected:
@@ -37,6 +45,10 @@ namespace ORB_SIFT{
         void DrawROI(cv::Mat& image);
 
         void ORBMatch() ;
+        //void eliminateWrongMatch();
+        //void GroundFeatureByLidar(pcl::PointCloud<PointType>::Ptr &ground_cloud);
+        void ProjectLidarCloud(pcl::PointCloud<PointType>::Ptr &ground_cloud
+                                        ,vector<cv::Point2f> &validProjectionPoints);
         //-----
 
         void CopyKeys() ;
@@ -44,9 +56,14 @@ namespace ORB_SIFT{
         //camera parameter
         cv::Mat mK;
         cv::Mat mDistCoef;
+        cv::Mat mP0; //kitti相机0的投影矩阵
         float mbf;
         bool mbRGB;
         ORBextractor* mpORBextractor;
+        //velodyne to Camera0 Transform
+        cv::Mat mTr;
+
+        vector<cv::Point2f> lidarProjPts;
 
         //仅用于展示，不可用于计算
         std::vector<cv::KeyPoint> Last_mvKeysROI;   //1

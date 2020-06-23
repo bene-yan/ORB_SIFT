@@ -16,6 +16,9 @@
 #include <opencv/cv.h>
 #include <opencv2/features2d/features2d.hpp>
 
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+
 #include "../include/ORBTest.h"
 #include "../include/SIFTTest.h"
 
@@ -53,6 +56,70 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilena
         ss << setfill('0') << setw(6) << i;
         vstrImageFilenames[i] = strPrefixLeft + ss.str() + ".png";
     }
+}
+//必须在LoadImages()后执行，否则没有vTimeStamps
+void LoadLidarClouds(const string &strPathToSequence, vector<string> &vstrLidarFilenames, const vector<double> vTimestamps)
+{
+
+    //LoadLidarCloud
+    string strLidarPathPrefix = strPathToSequence + "/velodyne/";
+
+    const int nTimes = vTimestamps.size();
+    vstrLidarFilenames.resize(nTimes);
+
+    for(int i=0; i<nTimes; i++)
+    {
+        stringstream ss;
+        ss << setfill('0') << setw(6) << i;
+        vstrLidarFilenames[i] = strLidarPathPrefix + ss.str() + ".bin";
+    }
+}
+
+void read_lidar_bindata(const std::string lidar_data_path,pcl::PointCloud<PointType>::Ptr &cloud)
+{
+    std::ifstream lidar_data_file(lidar_data_path, std::ifstream::in | std::ifstream::binary);
+    //refer C++ primer page.676
+    lidar_data_file.seekg(0, std::ios::end);    //将输入流中标记定位到流结束的位置
+    const size_t num_elements = lidar_data_file.tellg() / sizeof(float);    //获取lidar_data_file的当前位置
+                                                                            //由于上一条语句，将获取到流的结束处，也就是文件的大小
+    lidar_data_file.seekg(0, std::ios::beg);    //将输入流中标记定位到流开始的位置
+
+    std::vector<float> lidar_data(num_elements);
+    //从文件流lidar_data_file中提取num_elements个字符保存到lidar_data_buffer
+    //http://www.cplusplus.com/reference/istream/istream/read/
+    lidar_data_file.read(reinterpret_cast<char*>(&lidar_data[0]), num_elements*sizeof(float));
+    std::cout << "totally " << lidar_data.size() / 4.0 << " points in this lidar frame \n";
+    //pcl::PointCloud<pcl::PointXYZI> laser_cloud;    //保存激光点云（三维坐标+强度）
+       
+    for (std::size_t i = 0; i < lidar_data.size(); i += 4)
+    {
+        pcl::PointXYZI point;
+        point.x = lidar_data[i    ];
+        point.y = lidar_data[i + 1];
+        point.z = lidar_data[i + 2];
+        point.intensity = lidar_data[i + 3];
+        cloud->push_back(point);
+    }
+   
+}
+
+int pcd_read(const std::string &pcd_file,pcl::PointCloud<PointType>::Ptr &cloud)
+{
+    //创建PointCloud<pcl::PointXYZ> boost共享指针并初始化
+    //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+
+    //从磁盘加载PointCloud数据到二进制Blob
+    if (pcl::io::loadPCDFile<PointType> (pcd_file, *cloud) == -1) //* load the file
+    {
+        string error_info="Couldn't read file " +pcd_file+ " \n";
+        PCL_ERROR (error_info.c_str());
+        return (-1);
+    }
+    //std::cout << "Loaded "
+              //<< cloud->width * cloud->height
+              //<< " data points from "<<pcd_file
+              //<< std::endl;
+
 }
 
 void Compute_ROI(const cv::Mat& image,
@@ -116,6 +183,9 @@ int main(int argc, char** argv)
     vector<double> vTimestamps;
     LoadImages(string(argv[2]), vstrImageFilenames, vTimestamps);
 
+    vector<string> vstrLidarFilenames;
+    LoadLidarClouds(string(argv[2]),vstrLidarFilenames,vTimestamps);
+
     int nImages = vstrImageFilenames.size();
     if(nImages==0)
     {
@@ -123,11 +193,18 @@ int main(int argc, char** argv)
     }
     cout<<endl<<nImages<<" pictures."<<endl;
 
+    int nClouds = vstrImageFilenames.size();
+    if(nImages==0)
+    {
+        cerr<<"No Cloud in"<<string(argv[2])<<endl;
+    }
+
     ORBTest ORB_Test(argv[1]);
     SIFTTest SIFT_Test(argv[1]);
 
     cv::Mat im;
     //cv::Mat Last_img;
+    pcl::PointCloud<PointType>::Ptr origin_cloud (new pcl::PointCloud<PointType>);
     string SavePath="../Result_imgs/";
     string Sequence=string(argv[2]);
     size_t len=Sequence.length();
@@ -143,6 +220,10 @@ int main(int argc, char** argv)
             return 1;
         }
 
+        //Read pcd
+        //pcd_read(vstrLidarFilenames[ni],origin_cloud);
+		//read lidar.bin
+		read_lidar_bindata(vstrLidarFilenames[ni],origin_cloud);
 
         //ORBTest
         #ifdef COMPILEDWITHC11
@@ -159,7 +240,7 @@ int main(int argc, char** argv)
                 Start=std::chrono::monotonic_clock::now();
         #endif
         //ORB_Test.Extract_ORB(image_ROI);
-        ORB_Test.GrabImage(im,vTimestamps[ni]);
+        ORB_Test.GrabImage(im,vTimestamps[ni],origin_cloud);
         //ORB_Test.Extract_ORB(im);
         #ifdef COMPILEDWITHC11
                 Done=std::chrono::steady_clock::now();

@@ -12,9 +12,12 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+#include <pcl/point_types.h>
+
 #include "ORBTest.h"
 #include "../Thirdparty/DBoW2/DUtils/Random.h"
 #include "Initializer.h"
+#include "LidarProcess.h"
 
 using namespace std;
 using namespace cv;
@@ -51,18 +54,25 @@ namespace ORB_SIFT {
         DistCoef.at<float>(1) = fSettings["Camera.k2"];
         DistCoef.at<float>(2) = fSettings["Camera.p1"];
         DistCoef.at<float>(3) = fSettings["Camera.p2"];
+
         const float k3 = fSettings["Camera.k3"];
         if (k3 != 0) {
             DistCoef.resize(5);
             DistCoef.at<float>(4) = k3;
         }
         DistCoef.copyTo(mDistCoef);
-
+        
         mbf = fSettings["Camera.bf"];
 
         float fps = fSettings["Camera.fps"];
         if (fps == 0)
             fps = 30;
+
+        cv::Mat P0=cv::Mat::zeros(3,4,CV_32F);
+        K.copyTo(P0.rowRange(0,3).colRange(0,3));
+        P0.at<float>(0,3)=-fx*mbf;
+        P0.copyTo(mP0);
+        cout<<"Project matrix of camera_0 P0: "<<endl<<mP0<<endl;
 
         // Max/Min Frames to insert keyframes and to check relocalisation
         //mMinFrames = 0;
@@ -108,11 +118,35 @@ namespace ORB_SIFT {
         ROI_middle_col=fSettings["ROI.middle_col"];
         ROI_lower_row=fSettings["ROI.lower_row"];
 
+        //load lidar to camera transform
+
+        cv::Mat Tr = cv::Mat::eye(4, 4, CV_32F);
+        Tr.at<float>(0, 0) = fSettings["Tr.R11"];
+        Tr.at<float>(0, 1) = fSettings["Tr.R12"];
+        Tr.at<float>(0, 2) = fSettings["Tr.R13"];
+        
+        Tr.at<float>(0, 3) = fSettings["Tr.t1"];
+        
+        Tr.at<float>(1, 0) = fSettings["Tr.R21"];
+        Tr.at<float>(1, 1) = fSettings["Tr.R22"];
+        Tr.at<float>(1, 2) = fSettings["Tr.R23"];
+        
+        Tr.at<float>(1, 3) = fSettings["Tr.t2"];
+        
+        Tr.at<float>(2, 0) = fSettings["Tr.R31"];
+        Tr.at<float>(2, 1) = fSettings["Tr.R32"];
+        Tr.at<float>(2, 2) = fSettings["Tr.R33"];
+        
+        Tr.at<float>(2, 3) = fSettings["Tr.t3"];
+
+        Tr.copyTo(mTr);
+        cout<<"lidar to camera transform Tr:"<<endl<<mTr<<endl;
+
         mpORBextractor = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
 
     }
 
-    void ORBTest::GrabImage(const cv::Mat &img, const double &timestamp) {
+    void ORBTest::GrabImage(const cv::Mat &img, const double &timestamp,pcl::PointCloud<PointType>::Ptr &orgin_cloud) {
 
         mCurrentImg=img;
         if(mCurrentImg.channels()==3)
@@ -129,7 +163,21 @@ namespace ORB_SIFT {
             else
                 cvtColor(mCurrentImg,mCurrentImg,CV_BGRA2GRAY);
         }
-
+        
+        //将点云投影到图像，投影点保存在lidarProjPts
+        
+        lego_loam::getParamFromYAML("/home/bene-robot/CLionProjects/ORB_SIFT/SettingFiles/loam_config.yaml");
+        lego_loam::resetParameters();
+        lego_loam::test();
+        pcl::PointCloud<PointType>::Ptr full_cloud (new pcl::PointCloud<PointType>);	//FixME智能指针什么时候销毁？
+        pcl::PointCloud<PointType>::Ptr ground_cloud (new pcl::PointCloud<PointType>);
+		lego_loam::projectPointCloud(orgin_cloud,full_cloud);
+		lego_loam::groundRemoval(full_cloud,ground_cloud);
+		
+		
+		lidarProjPts.clear();
+        ProjectLidarCloud(ground_cloud,lidarProjPts);
+		//full_cloud.reset(new pcl::PointCloud<PointType>());
         //计算ROI区域
         if(mbFirstImg)
         {
@@ -151,7 +199,9 @@ namespace ORB_SIFT {
 
         //对图像进行特征提取、校正等操作
         mLastFrame = Frame(mCurrentFrame);
-        mCurrentFrame = Frame(mROI_Img, timestamp, mpORBextractor, mK, mDistCoef, mbf);
+        mCurrentFrame = Frame(mROI_Img, timestamp, mpORBextractor, mK, mDistCoef, mbf);     //通过ROI提取特征
+        //TODO 通过激光地面点投影到图像提取特征
+
         //mCurrentFrame = Frame(mCurrentImg, timestamp, mpORBextractor, mK, mDistCoef, mbf);
         Last_mvKeysROI=Curr_mvKeysROI;
         //复制用于展示的特征点
@@ -162,13 +212,15 @@ namespace ORB_SIFT {
             ORBMatch();
             DrawMatches();
 
-
-            //HomoDecomp H_Decompor(mK,mLastFrame,mCurrentFrame,vnMatches12,20);
-            //H_Decompor.DecompHomography(score,R21,t21);
             cv::Mat R21,t21;
+            float score=0.0;
+
+            HomoDecomp H_Decompor(mK,mLastFrame,mCurrentFrame,vnMatches12,20);
+            H_Decompor.DecompHomography(score,R21,t21);
+
             vector<bool> vbTriangulated;
             vector<cv::Point3f> vIniP3D;
-            float score=0.0;
+/*
             if(mMatches>10)
             {
 
@@ -176,7 +228,7 @@ namespace ORB_SIFT {
                 OrbHdecomposer.Initialize(mCurrentFrame,vnMatches12,R21,t21,vIniP3D,vbTriangulated);
 
             }
-
+*/
             cout<<"Score: "<<score<<endl;
             cout<<"R21:"<<endl<<cv::format(R21,cv::Formatter::FMT_C)<<endl;
             cout<<"t21:"<<endl<<cv::format(t21,cv::Formatter::FMT_C)<<endl;
@@ -313,6 +365,12 @@ namespace ORB_SIFT {
 
 
         }
+        ///show project points
+        for(size_t i=0,N=lidarProjPts.size();i<N;i++)
+        {
+        	cv::circle(LabelROI_im,lidarProjPts[i],2,cv::Scalar(0,0,255),-1);
+        
+        }
         ///putText
         //cout<<"putText"<<endl;
         stringstream ss;
@@ -333,6 +391,7 @@ namespace ORB_SIFT {
         if(false==cv::imwrite(SaveFileName,LabelROI_im))
             cout<<"fail to save."<<endl;
     }
+    
     void ORBTest::ORBMatch()
     {
         if(mCurrentFrame.mnId==0)
@@ -341,6 +400,37 @@ namespace ORB_SIFT {
         ORBmatcher matcher(0.9,true);
         mMatches=matcher.SearchForInitialization(mLastFrame,mCurrentFrame,vnMatches12,30);
         cout<<"Id: "<<mCurrentFrame.mnId<<" find "<<mMatches<<" matches."<<endl;
+    }
+
+    void ORBTest::ProjectLidarCloud(pcl::PointCloud<PointType>::Ptr &ground_cloud
+                                        ,vector<cv::Point2f> &validProjectionPoints)
+    {
+   		validProjectionPoints.clear();
+   		//Tr transforms a point from velodyne coordinates into the
+		//left rectified camera coordinate system. In order to map a point X from the
+		//velodyne scanner to a point x in the i'th image plane, you thus have to
+		//transform it like:
+		//					x = Pi * Tr * X
+		//
+        for(size_t i=0,N=ground_cloud->points.size();i<N;i++)
+        {
+            //ProjectToImg(ground_cloud[i]);
+            cv::Mat Point3d4=cv::Mat::zeros(4,1,CV_32F);
+            Point3d4.at<float>(0)=ground_cloud->points[i].x;
+            Point3d4.at<float>(1)=ground_cloud->points[i].y;
+            Point3d4.at<float>(2)=ground_cloud->points[i].z;
+            Point3d4.at<float>(3)=1;
+             cv::Mat pt_hc=mP0*mTr*Point3d4; //将X投影到图像上 P0和Tr在calib中给出
+            if(pt_hc.at<float>(2)>0)	//ground_point中有些投影后全为负的值，也能投影到图像上（上部），
+            							//它们其实是激光雷达后方的点，在图像上是不可见的
+            {
+             cv::Point2f pt(pt_hc.at<float>(0)/pt_hc.at<float>(2),pt_hc.at<float>(1)/pt_hc.at<float>(2) );
+            	if(pt.x>0&&pt.y>0&&pt.x<mImg_WIDTH&&pt.y<mImg_HEIGHT)
+            	    validProjectionPoints.push_back(pt);
+            }
+        }
+        
+        cout<<"number of validProjPts: "<<validProjectionPoints.size()<<endl;
     }
 
     void ORBTest::CopyKeys()

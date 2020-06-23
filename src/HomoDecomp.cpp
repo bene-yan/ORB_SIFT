@@ -148,10 +148,10 @@ namespace ORB_SIFT {
             if (true == isCoplanar(vPn3dC1, normal))
             {
                 currentScore = normal.dot(n1i); //可能为负，最大为1
-                cout<<"eight point for H is coplanar,CurrentScore: "<<currentScore<<endl;
+                //cout<<"eight point for H is coplanar,CurrentScore: "<<currentScore<<endl;
             }
             else
-                cout<<"eight point for H is non-coplanar"<<endl;
+                //cout<<"eight point for H is non-coplanar"<<endl;
 
 
             if (currentScore > score) {
@@ -419,7 +419,7 @@ namespace ORB_SIFT {
             //能活到这里的解只剩下两个。
             cv::Mat t_gt;
             t_gt=vt[i]/vd[i]*1.65;
-            cout << "t_gt" << i << ":" << endl << cv::format(t_gt, cv::Formatter::FMT_C) << endl;
+            //cout << "t_gt" << i << ":" << endl << cv::format(t_gt, cv::Formatter::FMT_C) << endl;
 
             cv::Mat t0(3,1,CV_32F);
             t0.at<float>(0)=-0.04690294;
@@ -428,8 +428,8 @@ namespace ORB_SIFT {
 
             if(cv::norm(t_gt-t0)<0.05||cv::norm(t_gt+t0)<0.05)
             {
-                cout << "R" << i << ":" << endl << cv::format(vR[i], cv::Formatter::FMT_C) << endl;
-                cout << "t" << i << ":" << endl << cv::format(vt[i], cv::Formatter::FMT_C) << endl;
+                //cout << "R" << i << ":" << endl << cv::format(vR[i], cv::Formatter::FMT_C) << endl;
+                //cout << "t" << i << ":" << endl << cv::format(vt[i], cv::Formatter::FMT_C) << endl;
             }
 
             //cout << "R" << i << ":" << endl << cv::format(vR[i], cv::Formatter::FMT_C) << endl;
@@ -694,5 +694,11 @@ namespace ORB_SIFT {
         }
 
         return true;
+    }
+
+    void HomoDecomp::eliminateWrongMatch() {
+        size_t N=mPairMatch12.size();
+
+
     }
 }

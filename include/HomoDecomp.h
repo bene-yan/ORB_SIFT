@@ -19,7 +19,7 @@ namespace ORB_SIFT {
     public:
         //HomoDecomp();
         HomoDecomp(cv::Mat &K,Frame &LastFrame,Frame &CurrentFrame,vector<int> &vnMatches12,int maxIterations);
-
+        void eliminateWrongMatch();
         void GenerateSets();
         void DecompHomography(float &score, cv::Mat &R21, cv::Mat &t21);
 

@@ -17,7 +17,15 @@ else()
     message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
+#set(OpenCV_DIR "/home/bene-robot/opencv-3.4.7/build/")
+message(${OpenCV_DIR})
 find_package(OpenCV 3 REQUIRED)
+find_package(PCL 1.2 REQUIRED)
+
+
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/include)
@@ -35,10 +43,12 @@ SET(SRC
         src/Frame.cc
         src/ORBmatcher.cc
         src/HomoDecomp.cpp
-        src/Initializer.cc)
+        src/Initializer.cc
+        src/LidarProcess.cpp)
 
 SET(LIBS
         ${OpenCV_LIBS}
+        ${PCL_LIBRARIES}
         ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so)
 
 add_executable(ORB_SIFT ${SRC})
