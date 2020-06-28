@@ -168,7 +168,7 @@ namespace ORB_SIFT {
         
         lego_loam::getParamFromYAML("/home/bene-robot/CLionProjects/ORB_SIFT/SettingFiles/loam_config.yaml");
         lego_loam::resetParameters();
-        lego_loam::test();
+        //lego_loam::test();
         pcl::PointCloud<PointType>::Ptr full_cloud (new pcl::PointCloud<PointType>);	//FixME智能指针什么时候销毁？
         pcl::PointCloud<PointType>::Ptr ground_cloud (new pcl::PointCloud<PointType>);
 		lego_loam::projectPointCloud(orgin_cloud,full_cloud);
@@ -178,12 +178,13 @@ namespace ORB_SIFT {
 		lidarProjPts.clear();
         ProjectLidarCloud(ground_cloud,lidarProjPts);
 		//full_cloud.reset(new pcl::PointCloud<PointType>());
+		
         //计算ROI区域
         if(mbFirstImg)
         {
             Compute_HW_ROI();
             mbFirstImg=false;
-
+/*
             cv::Mat t0(3,1,CV_32F);
             t0.at<double>(0)=-0.04690294;
             t0.at<double>(1)=-0.02839928;
@@ -192,6 +193,7 @@ namespace ORB_SIFT {
             //t0<<-0.04690294<<-0.02839928<<0.8586941;
             t0=t0/cv::norm(t0);
             cout<<"t0:"<<cv::format(t0,cv::Formatter::FMT_C)<<endl;
+  */
         }
 
         //提取当前图像的ROI
@@ -200,8 +202,9 @@ namespace ORB_SIFT {
         //对图像进行特征提取、校正等操作
         mLastFrame = Frame(mCurrentFrame);
         mCurrentFrame = Frame(mROI_Img, timestamp, mpORBextractor, mK, mDistCoef, mbf);     //通过ROI提取特征
-        //TODO 通过激光地面点投影到图像提取特征
-
+        //TODO 通过激光地面点投影到图像筛选特征
+		//在Frame类中定义特征点筛选函数，在此处执行。通过label mat方式选出地面特征点
+		mCurrentFrame.CullKeysByLidar(lidarProjPts);
         //mCurrentFrame = Frame(mCurrentImg, timestamp, mpORBextractor, mK, mDistCoef, mbf);
         Last_mvKeysROI=Curr_mvKeysROI;
         //复制用于展示的特征点
@@ -304,14 +307,28 @@ namespace ORB_SIFT {
         //cv::Mat src_im=image.clone();   //copy source image
         cv::Mat LabelROI_im=mCurrentImg.clone();
         cvtColor(LabelROI_im,LabelROI_im,CV_GRAY2RGB);
-        cv::rectangle(LabelROI_im,mROI,Scalar(255,0,0),2);   //框出兴趣区域 颜色BGR
+        
+        //cv::rectangle(LabelROI_im,mROI,Scalar(255,0,0),2);   //框出兴趣区域 颜色BGR
+        const double middle_col=0.2;
+        const double lower_row=0.333333;
+
+        mImg_WIDTH=mCurrentImg.cols;
+        mImg_HEIGHT=mCurrentImg.rows;
+        cout<<"Height: "<<mImg_HEIGHT<<" Width: "<<mImg_WIDTH<<endl;
+        const int x=(0.5-0.5*middle_col)*(mCurrentImg.cols);  //起始列
+        const int y=(1-lower_row)*(mCurrentImg.rows); //起始行
+        const int width=middle_col*(mCurrentImg.cols);
+        const int height=lower_row*(mCurrentImg.rows);
+        cv::Rect init_ROI(x,y,width,height);
+        cv::rectangle(LabelROI_im,init_ROI,Scalar(255,0,0),2);
+        
         //cv::imshow("ROIsrc",LabelROI_im);
         //TO-DO:show keypoint location and quantities
         //vector<cv::KeyPoint> KeyPoints(orbTest.mvKeys);
         int nKeys=Curr_mvKeysROI.size();
         ///draw KeyPoints
         //cout<<"draw KeyPoints"<<endl;
-        const float r = 5;
+        const float r = 3;
         //cv::Mat P=mk*GT00_1;
         //cv::Point origin=roi.tl();
         for(int ni=0;ni<nKeys;ni++)
@@ -330,7 +347,7 @@ namespace ORB_SIFT {
             pt4.y=Curr_mvKeysROI[ni].pt.y+r;
             */
 
-            if(mCurrentFrame.mnId==0||vnMatches12.size()<1)
+            if(mCurrentFrame.mnId==0||vnMatches12.size()<1)	//第一帧
             {
                 cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,255,0));
                 cv::circle(LabelROI_im,Curr_mvKeysROI[ni].pt,
@@ -341,8 +358,9 @@ namespace ORB_SIFT {
 
             }
             //TODO debug
-            else
+            else	//非第一帧区分匹配点和非匹配点
             {
+            /*
                 if(vnMatches12[ni]>0){
                     cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,255,0));
                     cv::circle(LabelROI_im,Curr_mvKeysROI[ni].pt,
@@ -352,13 +370,29 @@ namespace ORB_SIFT {
                 }
 
 
-                /*
+                
                 else{
-                    cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,0,255));
+                    cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,255,0));
                     cv::circle(LabelROI_im,Curr_mvKeysROI[ni].pt,
                             //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
-                               2,cv::Scalar(0,0,255),-1);
-                }*/
+                               2,cv::Scalar(0,255,0),-1);
+                }
+                */
+                if(mCurrentFrame.mGroundMat[ni]==1)
+                {
+                	cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(0,255,0));
+                    cv::circle(LabelROI_im,Curr_mvKeysROI[ni].pt,
+                            //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
+                               2,cv::Scalar(0,255,0),-1);
+                }
+                else
+                {
+                	cv::rectangle(LabelROI_im,pt1,pt2,cv::Scalar(255,0,0));
+                    cv::circle(LabelROI_im,Curr_mvKeysROI[ni].pt,
+                            //Point(origin.x+KeyPoints[ni].pt.x,origin.y+KeyPoints[ni].pt.y),
+                               2,cv::Scalar(0,255,0),-1);
+                }
+                
 
             }
 
@@ -368,7 +402,7 @@ namespace ORB_SIFT {
         ///show project points
         for(size_t i=0,N=lidarProjPts.size();i<N;i++)
         {
-        	cv::circle(LabelROI_im,lidarProjPts[i],2,cv::Scalar(0,0,255),-1);
+        	cv::circle(LabelROI_im,lidarProjPts[i],1,cv::Scalar(0,0,255),-1);
         
         }
         ///putText
@@ -382,8 +416,8 @@ namespace ORB_SIFT {
         int thickness=1;
         int baseline;
         cv::Size text_size=cv::getTextSize(text,font_face,font_scale,thickness,&baseline);
-        cv::putText(LabelROI_im,text,Point(mROI.x,mROI.y-20),font_face,font_scale,
-                    cv::Scalar(255,0,0),thickness,8,0);
+        //cv::putText(LabelROI_im,text,Point(mROI.x,mROI.y-20),font_face,font_scale,
+                    //cv::Scalar(255,0,0),thickness,8,0);
 
         //cout<<SaveFileName<<endl;
         //cv::imshow("Save",LabelROI_im);
@@ -457,6 +491,44 @@ namespace ORB_SIFT {
         rectangle(image,mROI,Scalar(255,0,0),2);
 
     }
+    /*
+    void ORBTest::CullKeysByLidarGround(const float window_radiu)
+    {
+    //TODO validProjectionPoints no declare
+    	cv::Mat Img_ground_mat(mCurrentFrame.mvKeysUn.size(),0);
+    	for(size_t i=0,N=validProjectionPoints.size();i<N;i++)
+    	{
+    		const vector<size_t> vIndices=mCurrentFrame.GetFeaturesInArea(ground_cloud[i].x,ground_cloud[i].y,window_radiu);
+    		if(vIndices.empty())
+    			continue;
+    		for(vector<size_t>::const_iterator vit=vIndices.begin(),vend=vIndices.end();vit!=vend;vit++)
+    		{
+    			Img_ground_mat[*vit]=1; //此处标记如何传递到匹配
+    		}
+    	}
+    }
+    void ORBTest::CullKeysByLidarGround_cvkdtree(const float window_radiu)
+    {
+    	cv::Mat Img_ground_mat(mCurrentFrame.mvKeysUn.size(),0);
+    	cv::KDTree cvTree(validProjectionPoints,false);
+    	const int K = 1, Emax = INT_MAX;
+		int idx[K];
+		float dist[K];
+		for(size_t i=0,N=mCurrentFrame.mvKeysUn.size();i<N;i++)
+		{
+			cvTree.findNearest(query_vec, K, Emax, idx, 0, dist);
+			CV_Assert(dist[0] <= dist[1] && dist[1] <= dist[2]);
+			if(idx[0]>0
+				&&std::sqrt(
+				std::pow(mCurrentFrame.mvKeysUn[i].x-validProjectionPoints[idx[0]].x,2)
+				+std::pow(mCurrentFrame.mvKeysUn[i].x-validProjectionPoints[idx[0]].x,2)
+				)<window_radiu
+			)
+				Img_ground_mat[i]=1;
+		}
+    	
+    }
+    */
 
 
 

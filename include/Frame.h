@@ -54,6 +54,9 @@ public:
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(const cv::Mat &im);
+    
+    //Cull ORB feature by Lidar Projections
+    void CullKeysByLidar(vector<cv::Point2f> &lidarProjPts);
 
     // Set the camera pose.
     void SetPose(cv::Mat Tcw);
@@ -164,6 +167,9 @@ public:
     static float mnMaxY;
 
     static bool mbInitialComputations;
+    
+    //Lidar
+    vector<int8_t> mGroundMat;
 
 
 private:

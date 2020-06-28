@@ -134,6 +134,57 @@ void Frame::ExtractORB(const cv::Mat &im)
         (*mpORBextractorLeft)(im,cv::Mat(),mvKeys,mDescriptors);
 }
 
+//TODO
+/*
+void Frame::CullKeysByLidar(vector<cv::Point2f> &lidarProjPts)
+{
+		mGroundMat.clear();
+		mGroundMat.resize(mvKeysUn.size());
+		
+		cv::flann::KDTreeIndexParams indexParam;
+		//TOFix
+	 	//cv::flann::Index cvTree(cv::Mat(lidarProjPts).reshape(1),indexParam);
+	 	
+    	const int maxresults = 10;
+		//cv::Mat idx,dist;
+		vector<int> idx;
+		vector<double> dist;
+		double radius=15;
+		for(size_t i=0,N=mvKeysUn.size();i<N;i++)
+		{
+			vector<float> query(2);
+			query[0]=mvKeysUn[i].pt.x;
+			query[1]=mvKeysUn[i].pt.y;
+			cvTree.radiusSearch(query,idx, dist, radius, maxresults, cv::flann::SearchParams(32) );
+			if(!idx.empty())
+			{
+				mGroundMat[i]=1;
+				cout<<"query"<<endl;
+				cout<<query[0]<<" "<<query[1]<<endl;
+				cout<<"lidarProjPts:"<<endl;
+				cout<<lidarProjPts[idx[0]].x<<lidarProjPts[idx[0]].y<<endl;
+			}
+				
+		}
+}
+*/
+void Frame::CullKeysByLidar(vector<cv::Point2f> &lidarProjPts)
+{
+	mGroundMat.clear();
+	mGroundMat.resize(mvKeysUn.size());
+	for(size_t i=0,N=lidarProjPts.size();i<N;i++)
+	{
+		
+		const vector<size_t> vIndices=GetFeaturesInArea(lidarProjPts[i].x,lidarProjPts[i].y-188,5.0);
+		if(vIndices.empty())
+			continue;
+		for(vector<size_t>::const_iterator vit=vIndices.begin(),vend=vIndices.end();vit!=vend;vit++)
+		{
+			mGroundMat[*vit]=1; //此处标记如何传递到匹配
+		}
+	}
+}
+
 void Frame::SetPose(cv::Mat Tcw)
 {
     mTcw = Tcw.clone();
