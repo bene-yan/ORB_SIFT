@@ -57,6 +57,8 @@ public:
     
     //Cull ORB feature by Lidar Projections
     void CullKeysByLidar(vector<cv::Point2f> &lidarProjPts);
+    //通过初始ROI挑选特征
+    void CullKeysInitial(const cv::Rect &InitROI);
 
     // Set the camera pose.
     void SetPose(cv::Mat Tcw);
@@ -170,6 +172,7 @@ public:
     
     //Lidar
     vector<int8_t> mGroundMat;
+    size_t mGrondKeys_size;
 
 
 private:

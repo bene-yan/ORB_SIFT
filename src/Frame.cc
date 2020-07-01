@@ -42,6 +42,7 @@ Frame::Frame(const Frame &frame)
      mbf(frame.mbf), mb(frame.mb), N(frame.N), mvKeys(frame.mvKeys),
      mvKeysUn(frame.mvKeysUn),
      //mFeatVec(frame.mFeatVec),
+     mGroundMat(frame.mGroundMat),
      mDescriptors(frame.mDescriptors.clone()),
      mnId(frame.mnId),
      mnScaleLevels(frame.mnScaleLevels),
@@ -61,6 +62,7 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
     :mpORBextractorLeft(extractor),
      mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf)
 {
+	mGrondKeys_size=0;
     // Frame ID
     mnId=nNextId++;
 
@@ -77,6 +79,8 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
     ExtractORB(imGray);
 
     N = mvKeys.size();
+    std::cout<<"INFO_in_Frame: ";
+    std::cout<<"Extract "<<N<<" ORBPoints."<<std::endl;
     if(mvKeys.empty())
         return;
 
@@ -175,14 +179,43 @@ void Frame::CullKeysByLidar(vector<cv::Point2f> &lidarProjPts)
 	for(size_t i=0,N=lidarProjPts.size();i<N;i++)
 	{
 		
-		const vector<size_t> vIndices=GetFeaturesInArea(lidarProjPts[i].x,lidarProjPts[i].y-188,5.0);
+		const vector<size_t> vIndices=GetFeaturesInArea(lidarProjPts[i].x,lidarProjPts[i].y-mnMaxY,5.0);
 		if(vIndices.empty())
 			continue;
 		for(vector<size_t>::const_iterator vit=vIndices.begin(),vend=vIndices.end();vit!=vend;vit++)
 		{
 			mGroundMat[*vit]=1; //此处标记如何传递到匹配
+			
 		}
 	}
+	for(size_t i=0,N=mGroundMat.size();i<N;i++)
+	{
+		if(mGroundMat[i]==1)
+			mGrondKeys_size++;
+	}
+}
+void Frame::CullKeysInitial(const cv::Rect &InitROI)
+{
+	mGroundMat.clear();
+	mGroundMat.resize(mvKeysUn.size());
+	size_t keys_size=0;
+	for(size_t i=0,N=mvKeysUn.size();i<N;i++)
+	{
+		float x_min=InitROI.x;
+		float x_max=InitROI.x+InitROI.width;
+		float y_min=InitROI.y-mnMaxY;
+		float y_max=InitROI.y+InitROI.height-mnMaxY;
+		//cout<<"Cull from InitROI:: x_min:"<<x_min<<" x_max:"<<x_max<<" y_min:"<<y_min<<" y_max:"<<y_max<<endl;
+		//cout<<"mvKeysUn[i].pt.x:"<<mvKeysUn[i].pt.x<<" mvKeysUn[i].pt.y"<<mvKeysUn[i].pt.y<<endl;
+		if(x_min<mvKeysUn[i].pt.x&&mvKeysUn[i].pt.x<x_max
+		&&y_min<mvKeysUn[i].pt.y&&mvKeysUn[i].pt.y<y_max)
+		{
+			mGroundMat[i]=1;
+			keys_size++;
+			mGrondKeys_size++;
+		}
+	}
+	cout<<"Initial Cull "<<keys_size<<" Keys."<<endl;
 }
 
 void Frame::SetPose(cv::Mat Tcw)

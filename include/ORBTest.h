@@ -23,6 +23,7 @@
 namespace ORB_SIFT{
 
 typedef pcl::PointXYZI PointType;
+enum ROI_Type{Init=0,General=2};
 
     class ORBTest{
         typedef pair<int,int> Match;
@@ -36,7 +37,7 @@ typedef pcl::PointXYZI PointType;
 
         void SaveResult(const string& SaveFileName);
     protected:
-        void Compute_HW_ROI();
+        void ComputeROI(const enum ROI_Type roiT);
         void WarpROI();
         void DrawMatches();
         void Shift_Keys_From_ROI_To_Origin();
@@ -45,8 +46,8 @@ typedef pcl::PointXYZI PointType;
         void DrawROI(cv::Mat& image);
 
         void ORBMatch() ;
-        //void eliminateWrongMatch();
-        //void GroundFeatureByLidar(pcl::PointCloud<PointType>::Ptr &ground_cloud);
+        void ORBMatchInit();
+        
         void ProjectLidarCloud(pcl::PointCloud<PointType>::Ptr &ground_cloud
                                         ,vector<cv::Point2f> &validProjectionPoints);
         //-----
@@ -78,8 +79,9 @@ typedef pcl::PointXYZI PointType;
         cv::Mat mCurrentImg;
         cv::Mat mLastImg;
         cv::Mat mROI_Img;
-
+       
         cv::Rect mROI;
+        
         double ROI_middle_col,ROI_lower_row;
 
         bool mbFirstImg;

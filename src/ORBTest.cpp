@@ -143,10 +143,13 @@ namespace ORB_SIFT {
         cout<<"lidar to camera transform Tr:"<<endl<<mTr<<endl;
 
         mpORBextractor = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+        
+        cout<<"--------------------Construct个个个Info-----------------------"<<endl;
 
     }
 
     void ORBTest::GrabImage(const cv::Mat &img, const double &timestamp,pcl::PointCloud<PointType>::Ptr &orgin_cloud) {
+    
 
         mCurrentImg=img;
         if(mCurrentImg.channels()==3)
@@ -163,28 +166,13 @@ namespace ORB_SIFT {
             else
                 cvtColor(mCurrentImg,mCurrentImg,CV_BGRA2GRAY);
         }
-        
-        //将点云投影到图像，投影点保存在lidarProjPts
-        
-        lego_loam::getParamFromYAML("/home/bene-robot/CLionProjects/ORB_SIFT/SettingFiles/loam_config.yaml");
-        lego_loam::resetParameters();
-        //lego_loam::test();
-        pcl::PointCloud<PointType>::Ptr full_cloud (new pcl::PointCloud<PointType>);	//FixME智能指针什么时候销毁？
-        pcl::PointCloud<PointType>::Ptr ground_cloud (new pcl::PointCloud<PointType>);
-		lego_loam::projectPointCloud(orgin_cloud,full_cloud);
-		lego_loam::groundRemoval(full_cloud,ground_cloud);
-		
-		
-		lidarProjPts.clear();
-        ProjectLidarCloud(ground_cloud,lidarProjPts);
-		//full_cloud.reset(new pcl::PointCloud<PointType>());
-		
+ /*       
         //计算ROI区域
         if(mbFirstImg)
         {
             Compute_HW_ROI();
             mbFirstImg=false;
-/*
+
             cv::Mat t0(3,1,CV_32F);
             t0.at<double>(0)=-0.04690294;
             t0.at<double>(1)=-0.02839928;
@@ -193,75 +181,126 @@ namespace ORB_SIFT {
             //t0<<-0.04690294<<-0.02839928<<0.8586941;
             t0=t0/cv::norm(t0);
             cout<<"t0:"<<cv::format(t0,cv::Formatter::FMT_C)<<endl;
-  */
         }
-
-        //提取当前图像的ROI
-        WarpROI();
-
-        //对图像进行特征提取、校正等操作
-        mLastFrame = Frame(mCurrentFrame);
-        mCurrentFrame = Frame(mROI_Img, timestamp, mpORBextractor, mK, mDistCoef, mbf);     //通过ROI提取特征
-        //TODO 通过激光地面点投影到图像筛选特征
-		//在Frame类中定义特征点筛选函数，在此处执行。通过label mat方式选出地面特征点
-		mCurrentFrame.CullKeysByLidar(lidarProjPts);
-        //mCurrentFrame = Frame(mCurrentImg, timestamp, mpORBextractor, mK, mDistCoef, mbf);
-        Last_mvKeysROI=Curr_mvKeysROI;
-        //复制用于展示的特征点
-        CopyKeys();
-        //从第二张图开始估计运动
-        if(mCurrentFrame.mnId>0)
+ */      
+        //此时mCurrentFrame还未更新，因此代表上一帧的状态
+        if(mCurrentFrame.nNextId>0)	//从第二张图开始有激光点云//TODO 改成通过判断lidar线程是否有地面点云
         {
-            ORBMatch();
-            DrawMatches();
-
-            cv::Mat R21,t21;
-            float score=0.0;
-
-            HomoDecomp H_Decompor(mK,mLastFrame,mCurrentFrame,vnMatches12,20);
-            H_Decompor.DecompHomography(score,R21,t21);
-
-            vector<bool> vbTriangulated;
-            vector<cv::Point3f> vIniP3D;
-/*
-            if(mMatches>10)
-            {
-
-                Initializer OrbHdecomposer(mLastFrame,1.0,200);
-                OrbHdecomposer.Initialize(mCurrentFrame,vnMatches12,R21,t21,vIniP3D,vbTriangulated);
-
-            }
-*/
-            cout<<"Score: "<<score<<endl;
-            cout<<"R21:"<<endl<<cv::format(R21,cv::Formatter::FMT_C)<<endl;
-            cout<<"t21:"<<endl<<cv::format(t21,cv::Formatter::FMT_C)<<endl;
-
+        	if(mCurrentFrame.nNextId==1)
+        	{
+        		ComputeROI(ROI_Type::Init);
+        		WarpROI();
+        		mCurrentFrame = Frame(mROI_Img, timestamp, mpORBextractor, mK, mDistCoef, mbf);     //ROI中提取特征
+        		CopyKeys();
+        		ORBMatchInit();
+              	DrawMatches();
+            	
+            	//TODO H->R,t_scaled
+            	
+            	//EndTODO
+            	//重新计算ROI，更新mCurrentFrame作为第2帧的上一帧
+            	ComputeROI(ROI_Type::General);
+            	WarpROI();
+            	Frame::mbInitialComputations=true;//重新计算图像边界等
+            	mCurrentFrame.nNextId--;
+            	mCurrentFrame.mnId--;
+            	mCurrentFrame = Frame(mROI_Img, timestamp, mpORBextractor, mK, mDistCoef, mbf);
+            	CopyKeys();
+            	//将点云投影到图像，投影点保存在lidarProjPts
+				lego_loam::getParamFromYAML("/home/bene-robot/CLionProjects/ORB_SIFT/SettingFiles/loam_config.yaml");
+				lego_loam::resetParameters();
+				//lego_loam::test();
+				pcl::PointCloud<PointType>::Ptr full_cloud (new pcl::PointCloud<PointType>);	//FixME智能指针什么时候销毁？
+				pcl::PointCloud<PointType>::Ptr ground_cloud (new pcl::PointCloud<PointType>);
+				lego_loam::projectPointCloud(orgin_cloud,full_cloud);
+				lego_loam::groundRemoval(full_cloud,ground_cloud);
+				
+				lidarProjPts.clear();
+				ProjectLidarCloud(ground_cloud,lidarProjPts);
+				
+				mCurrentFrame.CullKeysByLidar(lidarProjPts);
+        	}
+        	else 
+        	{
+        		ComputeROI(ROI_Type::General);
+            	WarpROI();
+            	mCurrentFrame = Frame(mROI_Img, timestamp, mpORBextractor, mK, mDistCoef, mbf);
+		    	//将点云投影到图像，投影点保存在lidarProjPts
+				lego_loam::getParamFromYAML("/home/bene-robot/CLionProjects/ORB_SIFT/SettingFiles/loam_config.yaml");
+				lego_loam::resetParameters();
+				//lego_loam::test();
+				pcl::PointCloud<PointType>::Ptr full_cloud (new pcl::PointCloud<PointType>);	//FixME智能指针什么时候销毁？
+				pcl::PointCloud<PointType>::Ptr ground_cloud (new pcl::PointCloud<PointType>);
+				lego_loam::projectPointCloud(orgin_cloud,full_cloud);
+				lego_loam::groundRemoval(full_cloud,ground_cloud);
+				
+				lidarProjPts.clear();
+				ProjectLidarCloud(ground_cloud,lidarProjPts);
+				//full_cloud.reset(new pcl::PointCloud<PointType>());
+				//TODO 通过激光地面点投影到图像筛选特征
+				//在Frame类中定义特征点筛选函数，在此处执行。通过label mat方式选出地面特征点
+				mCurrentFrame.CullKeysByLidar(lidarProjPts);
+				cout<<"INFO_in_ORBTest: ";
+				cout<<"left "<<mCurrentFrame.mGrondKeys_size<<" ground KeyPoints."<<endl;
+		    	//mCurrentFrame = Frame(mCurrentImg, timestamp, mpORBextractor, mK, mDistCoef, mbf);
+		    	//ORB匹配需要考虑地面点
+		    		ORBMatch();
+		    		CopyKeys();
+		        	DrawMatches();
+            }   		
         }
+        else	//第0帧
+        {
+        	ComputeROI(ROI_Type::Init);
+        	WarpROI();
+        	mCurrentFrame = Frame(mROI_Img, timestamp, mpORBextractor, mK, mDistCoef, mbf);     //ROI中提取特征
+        	CopyKeys();
+        	//TODO 通过初始ROI筛选特征
+			//mCurrentFrame.CullKeysInitial(InitROI);
+			
+        }
+        cout<<"//----------Frame_"<<mCurrentFrame.mnId<<"-------------//"<<endl;
+        //复制用于展示的特征点
+		Last_mvKeysROI=Curr_mvKeysROI;
+        //CopyKeys();
+        
+        mLastFrame = Frame(mCurrentFrame);
         mLastImg=mCurrentImg;
     }
 
-    void ORBTest::Compute_HW_ROI()
+    void ORBTest::ComputeROI(const enum ROI_Type roiT)
     {
-        const double middle_col=ROI_middle_col;
-        const double lower_row=ROI_lower_row;
-
-        mImg_WIDTH=mCurrentImg.cols;
-        mImg_HEIGHT=mCurrentImg.rows;
-        cout<<"Height: "<<mImg_HEIGHT<<" Width: "<<mImg_WIDTH<<endl;
+    	double middle_col=0.0;
+    	double lower_row=0.0;
+        if(roiT==ROI_Type::Init)
+        {
+		   	//读取图片尺寸
+		    mImg_WIDTH=mCurrentImg.cols;
+		    mImg_HEIGHT=mCurrentImg.rows;
+		    cout<<"Image Height: "<<mImg_HEIGHT<<" Width: "<<mImg_WIDTH<<endl;
+		    
+		     //计算初始ROI
+		     middle_col=0.2;
+		     lower_row=0.333333;
+        }
+        else
+        {
+        	//计算通用ROI
+        	middle_col=ROI_middle_col;
+        	lower_row=ROI_lower_row;
+        }
         const int x=(0.5-0.5*middle_col)*(mCurrentImg.cols);  //起始列
         const int y=(1-lower_row)*(mCurrentImg.rows); //起始行
         const int width=middle_col*(mCurrentImg.cols);
         const int height=lower_row*(mCurrentImg.rows);
-        cout<<"x:"<<x<<" y:"<<y<<" w:"<<width<<" h:"<<height<<endl;
+        cout<<"ROI:: x:"<<x<<" y:"<<y<<" w:"<<width<<" h:"<<height<<endl;
         mROI=Rect(x,y,width,height);
+        
     }
-
     void ORBTest::WarpROI()
     {
         mROI_Img=mCurrentImg(mROI);//.clone(); //这样可能并没有发生复制，只是ROIimage指向了ROI区域？
-        //cv::imshow("ROI",mROI_Img);
-        //waitKey();
-    }
+    }    
     void ORBTest::DrawMatches()
     {
         if(mCurrentFrame.mnId==0)
@@ -312,9 +351,9 @@ namespace ORB_SIFT {
         const double middle_col=0.2;
         const double lower_row=0.333333;
 
-        mImg_WIDTH=mCurrentImg.cols;
-        mImg_HEIGHT=mCurrentImg.rows;
-        cout<<"Height: "<<mImg_HEIGHT<<" Width: "<<mImg_WIDTH<<endl;
+        //mImg_WIDTH=mCurrentImg.cols;
+        //mImg_HEIGHT=mCurrentImg.rows;
+        //cout<<"Height: "<<mImg_HEIGHT<<" Width: "<<mImg_WIDTH<<endl;
         const int x=(0.5-0.5*middle_col)*(mCurrentImg.cols);  //起始列
         const int y=(1-lower_row)*(mCurrentImg.rows); //起始行
         const int width=middle_col*(mCurrentImg.cols);
@@ -427,6 +466,15 @@ namespace ORB_SIFT {
     }
     
     void ORBTest::ORBMatch()
+    {
+        if(mCurrentFrame.mnId==0)
+            return;
+
+        ORBmatcher matcher(0.9,false);
+        mMatches=matcher.SearchForLidarGroundCloud(mLastFrame,mCurrentFrame,vnMatches12,30);
+        cout<<"Id: "<<mCurrentFrame.mnId<<" find "<<mMatches<<" matches."<<endl;
+    }
+    void ORBTest::ORBMatchInit()
     {
         if(mCurrentFrame.mnId==0)
             return;

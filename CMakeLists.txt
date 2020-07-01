@@ -39,7 +39,7 @@ SET(SRC
         src/ORBextractor.cc
         src/ORBTest.cpp
         src/main.cpp
-        src/SIFTTest.cpp
+        #src/SIFTTest.cpp
         src/Frame.cc
         src/ORBmatcher.cc
         src/HomoDecomp.cpp

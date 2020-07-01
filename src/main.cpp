@@ -70,8 +70,11 @@ void LoadLidarClouds(const string &strPathToSequence, vector<string> &vstrLidarF
     for(int i=0; i<nTimes; i++)
     {
         stringstream ss;
-        ss << setfill('0') << setw(6) << i;
-        vstrLidarFilenames[i] = strLidarPathPrefix + ss.str() + ".bin";
+        //ss << setfill('0') << setw(6) << i;
+        //vstrLidarFilenames[i] = strLidarPathPrefix + ss.str() + ".bin";
+        //读取原始激光点云
+        ss << setfill('0') << setw(10) << i+3;	//前三帧丢弃
+        vstrLidarFilenames[i] = strLidarPathPrefix + ss.str() + ".txt";
     }
 }
 
@@ -88,6 +91,7 @@ void read_lidar_bindata(const std::string lidar_data_path,pcl::PointCloud<PointT
     //从文件流lidar_data_file中提取num_elements个字符保存到lidar_data_buffer
     //http://www.cplusplus.com/reference/istream/istream/read/
     lidar_data_file.read(reinterpret_cast<char*>(&lidar_data[0]), num_elements*sizeof(float));
+    std::cout << "INFO_in_main: ";
     std::cout << "totally " << lidar_data.size() / 4.0 << " points in this lidar frame \n";
     //pcl::PointCloud<pcl::PointXYZI> laser_cloud;    //保存激光点云（三维坐标+强度）
        
@@ -101,6 +105,22 @@ void read_lidar_bindata(const std::string lidar_data_path,pcl::PointCloud<PointT
         cloud->push_back(point);
     }
    
+}
+void read_lidar_textdata(const std::string lidar_data_path,pcl::PointCloud<PointType>::Ptr &cloud)
+{
+	std::ifstream lidar_data_file(lidar_data_path, std::ifstream::in);
+	string line;
+	int point_size=0;
+	while(getline(lidar_data_file,line))
+	{
+		istringstream LidarPoint(line);
+		pcl::PointXYZI point;
+		LidarPoint>>point.x>>point.y>>point.z>>point.intensity;
+		cloud->push_back(point);
+		point_size++;
+	}
+	std::cout << "INFO_in_main: ";
+	std::cout << "totally " << point_size << " points in this lidar frame \n";
 }
 
 int pcd_read(const std::string &pcd_file,pcl::PointCloud<PointType>::Ptr &cloud)
@@ -200,7 +220,7 @@ int main(int argc, char** argv)
     }
 
     ORBTest ORB_Test(argv[1]);
-    SIFTTest SIFT_Test(argv[1]);
+    //SIFTTest SIFT_Test(argv[1]);
 
     cv::Mat im;
     //cv::Mat Last_img;
@@ -223,7 +243,8 @@ int main(int argc, char** argv)
         //Read pcd
         //pcd_read(vstrLidarFilenames[ni],origin_cloud);
 		//read lidar.bin
-		read_lidar_bindata(vstrLidarFilenames[ni],origin_cloud);
+		//read_lidar_bindata(vstrLidarFilenames[ni],origin_cloud);
+		read_lidar_textdata(vstrLidarFilenames[ni],origin_cloud);
 
         //ORBTest
         #ifdef COMPILEDWITHC11
@@ -251,18 +272,9 @@ int main(int argc, char** argv)
         //std::chrono::duration<double,std::milli>
         std::chrono::duration<double> Time_cost
                 =std::chrono::duration_cast<std::chrono::duration<double>>(Done-Start);
+        std::cout << "INFO_in_main: ";
         std::cout<<"Spend "<<Time_cost.count()<<" Second."<<endl;
-
-
-        //SIFTTest
-        //SIFT_Test.Extract_SIFT(image_ROI);
-        //SIFT_Test.Extract_SIFT(im);
-        //SIFT_Test.GrabImage_sift(im,vTimestamps[ni]);
-
-        cout<<"Extract "<<ORB_Test.Curr_mvKeysROI.size()<<" ORBPoints."<<endl;
-        //cout<<"Extract "<<SIFT_Test.Curr_mvKeysROI.size()<<" SIFTPoints."<<endl;
-
-
+        
         //Show result
         stringstream ss;
         ss << setfill('0') << setw(6) << ni;
@@ -272,7 +284,6 @@ int main(int argc, char** argv)
         //SaveResult(im,FileName,ROI,ORB_Test.mvKeys);
         //SaveResult(im,FileName,ROI,ORB_Test);
         ORB_Test.SaveResult(FileName);
-        //SaveResult_SIFT(im,Sift_FileName,ROI,SIFT_Test.mSift_keys);
 
         //Last_img=im.clone();
 
